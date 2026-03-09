@@ -3,8 +3,8 @@
 namespace Mapo89\LaravelNginxProxyManager\Tests;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Orchestra\Testbench\TestCase as Orchestra;
 use Mapo89\LaravelNginxProxyManager\LaravelNginxProxyManagerServiceProvider;
+use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra
 {

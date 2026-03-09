@@ -11,7 +11,7 @@ class NginxProxyManagerApi
 
     public function __construct(?ApiClient $client = null)
     {
-        $this->client = $client ?? new ApiClient();
+        $this->client = $client ?? new ApiClient;
     }
 
     public static function make(?array $config = null): self
@@ -28,9 +28,9 @@ class NginxProxyManagerApi
 
     protected function getApiInstance(string $method): object
     {
-        $class = __NAMESPACE__ . '\\Api\\' . Str::studly($method);
+        $class = __NAMESPACE__.'\\Api\\'.Str::studly($method);
 
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             throw new \BadMethodCallException(
                 sprintf(
                     'API endpoint [%s] does not exist. Expected class %s.',

@@ -1,4 +1,5 @@
 <?php
+
 /*
  * ApiClient.php
  * @author Manuel Postler <info@postler.de>
@@ -15,6 +16,7 @@ use Illuminate\Validation\UnauthorizedException;
 class ApiClient
 {
     protected ?array $configLoader;
+
     protected ?string $token = null;
 
     public function __construct(?array $configLoader = null)
@@ -25,10 +27,11 @@ class ApiClient
     private function normalizeBaseUrl(string $url): string
     {
         $url = rtrim($url, '/');
-        if (!Str::endsWith($url, '/api')) {
+        if (! Str::endsWith($url, '/api')) {
             $url .= '/api';
         }
-        return $url . '/';
+
+        return $url.'/';
     }
 
     public function getConfig(): array
@@ -39,7 +42,7 @@ class ApiClient
             'password' => config('nginx-proxy-manager-api.password'),
         ];
 
-        if (!isset($config['url'], $config['email'], $config['password'])) {
+        if (! isset($config['url'], $config['email'], $config['password'])) {
             throw new \InvalidArgumentException("Config must include 'url', 'email' and 'password'");
         }
 
@@ -54,7 +57,7 @@ class ApiClient
 
         $config = $this->getConfig();
         $baseUrl = $this->normalizeBaseUrl($config['url']);
-        $cacheKey = 'npm-api-token-' . md5($config['url'] . $config['email']);
+        $cacheKey = 'npm-api-token-'.md5($config['url'].$config['email']);
 
         $this->token = Cache::remember(
             $cacheKey,
@@ -79,9 +82,9 @@ class ApiClient
 
     public function execute(string $httpMethod, string $endpoint = '', array $parameters = [], bool $asArray = true): mixed
     {
-        $allowedMethods = ['get','post','put','patch','delete'];
+        $allowedMethods = ['get', 'post', 'put', 'patch', 'delete'];
         $httpMethod = strtolower($httpMethod);
-        if (!in_array($httpMethod, $allowedMethods)) {
+        if (! in_array($httpMethod, $allowedMethods)) {
             throw new \InvalidArgumentException("Invalid HTTP method: {$httpMethod}");
         }
 
@@ -97,7 +100,7 @@ class ApiClient
         };
 
         if ($response->status() === 401) {
-            throw new UnauthorizedException("Unauthorized: Check your token");
+            throw new UnauthorizedException('Unauthorized: Check your token');
         }
 
         return $asArray ? $response->json() : $response->body();

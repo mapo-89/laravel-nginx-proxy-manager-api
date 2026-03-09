@@ -7,6 +7,7 @@ use Mapo89\LaravelNginxProxyManagerApi\Api\Utils\ApiClient;
 class Hosts
 {
     protected ApiClient $client;
+
     public function __construct(ApiClient $client)
     {
         $this->client = $client;
