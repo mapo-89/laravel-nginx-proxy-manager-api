@@ -13,9 +13,9 @@ class Hosts
     protected string $proxyType;
 
     protected array $modelMap = [
-        ProxyType::PROXY       => ProxyHost::class,
-        //ProxyType::REDIRECTION => RedirectionHost::class,
-        //ProxyType::DEAD      => DeadHost::class,
+        ProxyType::PROXY => ProxyHost::class,
+        // ProxyType::REDIRECTION => RedirectionHost::class,
+        // ProxyType::DEAD      => DeadHost::class,
     ];
 
     public function __construct(ApiClient $client, string $proxyType = ProxyType::PROXY)
@@ -39,7 +39,7 @@ class Hosts
             throw new \InvalidArgumentException('First argument must be string (proxyType) or array (data)');
         }
 
-        if (!isset($this->modelMap[$this->proxyType])) {
+        if (! isset($this->modelMap[$this->proxyType])) {
             throw new \InvalidArgumentException("Unknown proxy type: {$this->proxyType}");
         }
 

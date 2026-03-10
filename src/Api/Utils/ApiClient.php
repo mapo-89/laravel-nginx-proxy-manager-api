@@ -31,7 +31,7 @@ class ApiClient
             'token_cache_ttl' => config('nginx-proxy-manager-api.token_cache_ttl', 30),
         ];
 
-        if (!isset($config['url'], $config['email'], $config['password'])) {
+        if (! isset($config['url'], $config['email'], $config['password'])) {
             throw new \InvalidArgumentException("Config must include 'url', 'email', and 'password'");
         }
 
@@ -41,6 +41,7 @@ class ApiClient
     protected function normalizeBaseUrl(string $url): string
     {
         $url = rtrim($url, '/');
+
         return Str::endsWith($url, '/api') ? $url.'/' : $url.'/api/';
     }
 
@@ -52,7 +53,7 @@ class ApiClient
         $config = $this->getConfig();
         $cacheKey = 'npm-api-token-'.md5($config['url'].$config['email']);
 
-        return Cache::remember($cacheKey, $config['token_cache_ttl'] * 60, function() use ($config) {
+        return Cache::remember($cacheKey, $config['token_cache_ttl'] * 60, function () use ($config) {
             $response = Http::post($this->normalizeBaseUrl($config['url']).'tokens', [
                 'identity' => $config['email'],
                 'secret' => $config['password'],
@@ -67,10 +68,10 @@ class ApiClient
      */
     public function execute(string $method, string $endpoint = '', array $parameters = [], bool $asArray = true): mixed
     {
-        $allowedMethods = ['get','post','put','patch','delete'];
+        $allowedMethods = ['get', 'post', 'put', 'patch', 'delete'];
         $method = strtolower($method);
 
-        if (!in_array($method, $allowedMethods)) {
+        if (! in_array($method, $allowedMethods)) {
             throw new \InvalidArgumentException("Invalid HTTP method: {$method}");
         }
 
@@ -81,26 +82,35 @@ class ApiClient
         $response = Http::withToken($apiToken)->$method($baseUrl.$endpoint, $parameters);
 
         if ($response->status() === 401) {
-            throw new UnauthorizedException("Unauthorized: Check your token");
+            throw new UnauthorizedException('Unauthorized: Check your token');
         }
 
         return $asArray ? $response->json() : $response->body();
     }
 
     // ========================= base methods ======================================
-    public function get(string $url = '', array $parameters = [], bool $asArray = true) {
+    public function get(string $url = '', array $parameters = [], bool $asArray = true)
+    {
         return $this->execute('get', $url, $parameters, $asArray);
     }
-    public function post(string $url = '', array $parameters = [], bool $asArray = true) {
+
+    public function post(string $url = '', array $parameters = [], bool $asArray = true)
+    {
         return $this->execute('post', $url, $parameters, $asArray);
     }
-    public function put(string $url = '', array $parameters = [], bool $asArray = true) {
+
+    public function put(string $url = '', array $parameters = [], bool $asArray = true)
+    {
         return $this->execute('put', $url, $parameters, $asArray);
     }
-    public function patch(string $url = '', array $parameters = [], bool $asArray = true) {
+
+    public function patch(string $url = '', array $parameters = [], bool $asArray = true)
+    {
         return $this->execute('patch', $url, $parameters, $asArray);
     }
-    public function delete(string $url = '', array $parameters = [], bool $asArray = true) {
+
+    public function delete(string $url = '', array $parameters = [], bool $asArray = true)
+    {
         return $this->execute('delete', $url, $parameters, $asArray);
     }
 }

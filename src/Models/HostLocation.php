@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class HostLocation extends Model
 {
     public $timestamps = false;
+
     protected $table = null;
 
     protected $fillable = [
