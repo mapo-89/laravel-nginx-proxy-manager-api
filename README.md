@@ -72,6 +72,12 @@ This structure makes it easy to interact with the Nginx Proxy Manager API in a f
 composer test
 ```
 
+or 
+
+```bash
+vendor/bin/pest
+```
+
 ## Changelog
 
 Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.

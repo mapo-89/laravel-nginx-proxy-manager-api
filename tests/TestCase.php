@@ -1,10 +1,10 @@
 <?php
 
-namespace Mapo89\LaravelNginxProxyManager\Tests;
+namespace Mapo89\LaravelNginxProxyManagerApi\Tests;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Mapo89\LaravelNginxProxyManager\LaravelNginxProxyManagerServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
+use Mapo89\LaravelNginxProxyManagerApi\NginxProxyManagerApiServiceProvider;
 
 class TestCase extends Orchestra
 {
@@ -13,14 +13,14 @@ class TestCase extends Orchestra
         parent::setUp();
 
         Factory::guessFactoryNamesUsing(
-            fn (string $modelName) => 'Mapo89\\LaravelNginxProxyManager\\Database\\Factories\\'.class_basename($modelName).'Factory'
+            fn (string $modelName) => 'Mapo89\\LaravelNginxProxyManagerApi\\Database\\Factories\\'.class_basename($modelName).'Factory'
         );
     }
 
     protected function getPackageProviders($app)
     {
         return [
-            LaravelNginxProxyManagerServiceProvider::class,
+            NginxProxyManagerApiServiceProvider::class,
         ];
     }
 

@@ -73,7 +73,13 @@ class ApiClient
                     throw new \RuntimeException('Could not authenticate with NPM API');
                 }
 
-                return $response->json('token');
+                $token = $response->json('token');
+
+                if (!$token) {
+                    throw new \RuntimeException('No token returned from API');
+                }
+
+                return $token;
             }
         );
 

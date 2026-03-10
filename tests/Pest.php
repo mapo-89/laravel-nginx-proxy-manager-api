@@ -1,5 +1,5 @@
 <?php
 
-use Mapo89\LaravelNginxProxyManager\Tests\TestCase;
+use Mapo89\LaravelNginxProxyManagerApi\Tests\TestCase;
 
 uses(TestCase::class)->in(__DIR__);
