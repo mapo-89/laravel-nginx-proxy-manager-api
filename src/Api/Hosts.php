@@ -8,6 +8,7 @@ use Mapo89\LaravelNginxProxyManagerApi\Constants\ProxyType;
 class Hosts
 {
     protected ApiClient $client;
+
     protected string $proxyType;
 
     public function __construct(ApiClient $client, string $proxyType = ProxyType::PROXY)

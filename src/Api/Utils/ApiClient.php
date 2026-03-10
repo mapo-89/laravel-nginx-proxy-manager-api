@@ -75,7 +75,7 @@ class ApiClient
 
                 $token = $response->json('token');
 
-                if (!$token) {
+                if (! $token) {
                     throw new \RuntimeException('No token returned from API');
                 }
 

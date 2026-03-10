@@ -14,12 +14,11 @@ it('calls proxy hosts endpoint', function () {
 
     fakeNpmApi();
 
-    $api = new NginxProxyManagerApi();
+    $api = new NginxProxyManagerApi;
 
     $api->hosts()->all();
 
-    Http::assertSent(fn ($request) =>
-        str_contains($request->url(), 'nginx/proxy-hosts')
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'nginx/proxy-hosts')
     );
 });
 
@@ -27,11 +26,10 @@ it('supports different proxy types', function () {
 
     fakeNpmApi();
 
-    $api = new NginxProxyManagerApi();
+    $api = new NginxProxyManagerApi;
 
     $api->hosts('redirection')->all();
 
-    Http::assertSent(fn ($request) =>
-        str_contains($request->url(), 'nginx/redirection-hosts')
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'nginx/redirection-hosts')
     );
 });
