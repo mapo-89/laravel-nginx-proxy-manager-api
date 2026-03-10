@@ -5,7 +5,7 @@ namespace Mapo89\LaravelNginxProxyManagerApi\Facades;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @see \Mapo89\LaravelNginxProxyManager\LaravelNginxProxyManager
+ * @see \Mapo89\LaravelNginxProxyManagerApi\NginxProxyManagerApi
  */
 class NginxProxyManagerApi extends Facade
 {

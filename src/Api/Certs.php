@@ -13,7 +13,7 @@ class Certs
         $this->client = $client;
     }
 
-    public function getAll(): array
+    public function all(): array
     {
         return $this->client->get('/nginx/certificates');
     }

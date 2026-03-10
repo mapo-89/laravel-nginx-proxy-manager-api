@@ -5,23 +5,33 @@
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/mapo-89/laravel-nginx-proxy-manager/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/mapo-89/laravel-nginx-proxy-manager/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/mapo-89/laravel-nginx-proxy-manager.svg?style=flat-square)](https://packagist.org/packages/mapo-89/laravel-nginx-proxy-manager)
 
-This is where your description should go. Limit it to a paragraph or two. Consider adding a small example.
+A simple Laravel package to interact with the Nginx Proxy Manager API.
+
+This package provides a lightweight API client for communicating with the Nginx Proxy Manager REST API from Laravel applications.
 
 ## Installation
 
-You can install the package via composer:
+Install the package via Composer:
 
 ```bash
-composer require mapo-89/laravel-nginx-proxy-manager
+composer require mapo-89/laravel-nginx-proxy-manager-api
 ```
 
-You can publish the config file with:
+Publish the configuration file:
 
 ```bash
-php artisan vendor:publish --tag="nginx-proxy-manager-config"
+php artisan vendor:publish --tag="nginx-proxy-manager-config-api"
 ```
 
-This is the contents of the published config file:
+Then configure your .env:
+
+```bash
+NPM_API_BASE_URL=https://npm.example.com/api
+NPM_API_EMAIL=admin@example.com
+NPM_API_PASSWORD=secret
+```
+
+Example config (`config/nginx-proxy-manager-api.php`):
 
 ```php
 return [
@@ -34,9 +44,27 @@ return [
 ## Usage
 
 ```php
-$NginxProxyManagerApi = new Mapo89\LaravelNginxProxyManager();
-$NginxProxyManagerApi->health()->check();
+$npmApi = new Mapo89\NginxProxyManagerApi();
+$npmApi->health()->check();
 ```
+
+## API Structure
+
+The package is structured using resource classes.
+
+Example:
+
+```php
+$npm->health()->check();
+
+$npm->hosts('proxy')->all();
+$npm->hosts('redirection')->all();
+$npm->hosts('dead')->all();
+
+$npm->certificates()->all();
+```
+This structure makes it easy to interact with the Nginx Proxy Manager API in a fluent and Laravel-friendly way.
+
 
 ## Testing
 

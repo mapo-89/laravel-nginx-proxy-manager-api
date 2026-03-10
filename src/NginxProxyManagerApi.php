@@ -23,10 +23,10 @@ class NginxProxyManagerApi
 
     public function __call(string $method, array $parameters): object
     {
-        return $this->getApiInstance($method);
+        return $this->getApiInstance($method, $parameters);
     }
 
-    protected function getApiInstance(string $method): object
+    protected function getApiInstance(string $method, array $parameters = []): object
     {
         $class = __NAMESPACE__.'\\Api\\'.Str::studly($method);
 
@@ -40,6 +40,6 @@ class NginxProxyManagerApi
             );
         }
 
-        return new $class($this->client);
+        return new $class($this->client, ...$parameters);
     }
 }
