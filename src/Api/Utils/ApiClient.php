@@ -89,27 +89,27 @@ class ApiClient
     }
 
     // ========================= base methods ======================================
-    public function get(string $url = '', array $parameters = [], bool $asArray = true)
+    public function get(string $url = '', array $parameters = [], bool $asArray = true): mixed
     {
         return $this->execute('get', $url, $parameters, $asArray);
     }
 
-    public function post(string $url = '', array $parameters = [], bool $asArray = true)
+    public function post(string $url = '', array $parameters = [], bool $asArray = true): mixed
     {
         return $this->execute('post', $url, $parameters, $asArray);
     }
 
-    public function put(string $url = '', array $parameters = [], bool $asArray = true)
+    public function put(string $url = '', array $parameters = [], bool $asArray = true): mixed
     {
         return $this->execute('put', $url, $parameters, $asArray);
     }
 
-    public function patch(string $url = '', array $parameters = [], bool $asArray = true)
+    public function patch(string $url = '', array $parameters = [], bool $asArray = true): mixed
     {
         return $this->execute('patch', $url, $parameters, $asArray);
     }
 
-    public function delete(string $url = '', array $parameters = [], bool $asArray = true)
+    public function delete(string $url = '', array $parameters = [], bool $asArray = true): mixed
     {
         return $this->execute('delete', $url, $parameters, $asArray);
     }
