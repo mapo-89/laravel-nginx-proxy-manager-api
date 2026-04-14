@@ -8,6 +8,7 @@
 
 namespace Mapo89\LaravelNginxProxyManagerApi\Api\Utils;
 
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -29,6 +30,8 @@ class ApiClient
             'email' => config('nginx-proxy-manager-api.email'),
             'password' => config('nginx-proxy-manager-api.password'),
             'token_cache_ttl' => config('nginx-proxy-manager-api.token_cache_ttl', 30),
+            'cache_responses' => config('nginx-proxy-manager-api.cache_responses', false),
+            'response_cache_ttl' => config('nginx-proxy-manager-api.response_cache_ttl', 300),
         ];
 
         if (! isset($config['url'], $config['email'], $config['password'])) {
@@ -77,6 +80,31 @@ class ApiClient
 
         $config = $this->getConfig();
         $baseUrl = $this->normalizeBaseUrl($config['url']);
+
+        if ($this->shouldCacheResponse($method, $asArray, $config)) {
+            $cacheKey = $this->getResponseCacheKey($method, $endpoint, $parameters, $asArray, $config);
+
+            if (Cache::has($cacheKey)) {
+                return Cache::get($cacheKey);
+            }
+
+            $response = $this->performRequest($method, $baseUrl, $endpoint, $parameters);
+            $result = $asArray ? $response->json() : $response->body();
+
+            if ($response->successful()) {
+                Cache::put($cacheKey, $result, $config['response_cache_ttl'] * 60);
+            }
+
+            return $result;
+        }
+
+        $response = $this->performRequest($method, $baseUrl, $endpoint, $parameters);
+
+        return $asArray ? $response->json() : $response->body();
+    }
+
+    protected function performRequest(string $method, string $baseUrl, string $endpoint, array $parameters): Response
+    {
         $apiToken = $this->getToken();
 
         $response = Http::withToken($apiToken)->$method($baseUrl.$endpoint, $parameters);
@@ -85,7 +113,17 @@ class ApiClient
             throw new UnauthorizedException('Unauthorized: Check your token');
         }
 
-        return $asArray ? $response->json() : $response->body();
+        return $response;
+    }
+
+    protected function shouldCacheResponse(string $method, bool $asArray, array $config): bool
+    {
+        return $method === 'get' && $config['cache_responses'];
+    }
+
+    protected function getResponseCacheKey(string $method, string $endpoint, array $parameters, bool $asArray, array $config): string
+    {
+        return 'npm-api-response-'.md5($config['url'].$method.$endpoint.json_encode($parameters).($asArray ? '1' : '0'));
     }
 
     // ========================= base methods ======================================

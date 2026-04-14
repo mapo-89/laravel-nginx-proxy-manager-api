@@ -44,3 +44,20 @@ it('caches the token', function () {
     $client->getToken();
     Http::assertSentCount(1);
 });
+
+it('caches GET responses when enabled', function () {
+    Config::set('nginx-proxy-manager-api.cache_responses', true);
+    Config::set('nginx-proxy-manager-api.response_cache_ttl', 60);
+
+    fakeNpmApi([
+        '*' => Http::response(['data' => 'ok'], 200),
+    ]);
+
+    $client = new ApiClient;
+    $first = $client->get('nginx/test');
+    $second = $client->get('nginx/test');
+
+    expect($first)->toEqual(['data' => 'ok']);
+    expect($second)->toEqual(['data' => 'ok']);
+    Http::assertSentCount(2);
+});
