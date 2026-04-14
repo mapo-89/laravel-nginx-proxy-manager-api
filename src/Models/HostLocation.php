@@ -2,14 +2,8 @@
 
 namespace Mapo89\LaravelNginxProxyManagerApi\Models;
 
-use Illuminate\Database\Eloquent\Model;
-
-class HostLocation extends Model
+class HostLocation extends ApiModel
 {
-    public $timestamps = false;
-
-    protected $table = null;
-
     protected $fillable = [
         'forward_scheme',
         'forward_host',
@@ -24,9 +18,9 @@ class HostLocation extends Model
         'forward_port' => 'integer',
     ];
 
-    public function __construct(array $attributes = [])
+    protected function getDefaultAttributes(): array
     {
-        $attributes = array_merge([
+        return [
             'forward_scheme' => 'http',
             'forward_host' => '127.0.0.1',
             'forward_port' => 80,
@@ -34,8 +28,6 @@ class HostLocation extends Model
             'id' => null,
             'forward_path' => '',
             'advanced_config' => '',
-        ], $attributes);
-
-        parent::__construct($attributes);
+        ];
     }
 }
