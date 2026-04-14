@@ -8,10 +8,8 @@ use Mapo89\LaravelNginxProxyManagerApi\Api\Utils\ApiClient;
 use Mapo89\LaravelNginxProxyManagerApi\Constants\ProxyType;
 use Mapo89\LaravelNginxProxyManagerApi\Models\ProxyHost;
 
-class Hosts
+class Hosts extends BaseApi
 {
-    protected ApiClient $client;
-
     protected string $proxyType;
 
     protected array $modelMap = [
@@ -22,7 +20,8 @@ class Hosts
 
     public function __construct(ApiClient $client, string $proxyType = ProxyType::PROXY)
     {
-        $this->client = $client;
+        parent::__construct($client);
+
         $this->proxyType = $proxyType;
     }
 
