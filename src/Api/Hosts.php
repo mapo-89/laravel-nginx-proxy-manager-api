@@ -30,6 +30,23 @@ class Hosts extends BaseApi
         return $this->client->get("nginx/{$this->proxyType}-hosts");
     }
 
+    public function find(int $id): array
+    {
+        return $this->client->get("nginx/{$this->proxyType}-hosts/{$id}");
+    }
+
+    public function update(int $id, array $data): array
+    {
+        $this->validateHostData($data);
+
+        return $this->client->put("nginx/{$this->proxyType}-hosts/{$id}", $data);
+    }
+
+    public function delete(int $id): mixed
+    {
+        return $this->client->delete("nginx/{$this->proxyType}-hosts/{$id}");
+    }
+
     public function create(array|string $firstArg, array $data = []): array
     {
         if (is_string($firstArg)) {

@@ -25,14 +25,16 @@ class ApiClient
 
     protected function getConfig(): array
     {
-        $config = $this->config ?? [
+        $config = array_replace([
             'url' => config('nginx-proxy-manager-api.base_url'),
             'email' => config('nginx-proxy-manager-api.email'),
             'password' => config('nginx-proxy-manager-api.password'),
             'token_cache_ttl' => config('nginx-proxy-manager-api.token_cache_ttl', 30),
             'cache_responses' => config('nginx-proxy-manager-api.cache_responses', false),
             'response_cache_ttl' => config('nginx-proxy-manager-api.response_cache_ttl', 300),
-        ];
+            'timeout' => config('nginx-proxy-manager-api.timeout', 15),
+            'connect_timeout' => config('nginx-proxy-manager-api.connect_timeout', 3),
+        ], $this->config ?? []);
 
         if (! isset($config['url'], $config['email'], $config['password'])) {
             throw new \InvalidArgumentException("Config must include 'url', 'email', and 'password'");
@@ -57,10 +59,17 @@ class ApiClient
         $cacheKey = 'npm-api-token-'.md5($config['url'].$config['email']);
 
         return Cache::remember($cacheKey, $config['token_cache_ttl'] * 60, function () use ($config) {
-            $response = Http::post($this->normalizeBaseUrl($config['url']).'tokens', [
+            $response = Http::acceptJson()->withoutRedirecting()->connectTimeout($config['connect_timeout'])->timeout($config['timeout'])->post($this->normalizeBaseUrl($config['url']).'tokens', [
                 'identity' => $config['email'],
                 'secret' => $config['password'],
-            ])->throw();
+            ]);
+            if (! $response->successful()) {
+                throw new \RuntimeException('Nginx Proxy Manager authentication failed.');
+            }
+
+            if (! is_string($response->json('token')) || $response->json('token') === '') {
+                throw new \UnexpectedValueException('The API did not return a token.');
+            }
 
             return $response->json('token');
         });
@@ -105,12 +114,21 @@ class ApiClient
 
     protected function performRequest(string $method, string $baseUrl, string $endpoint, array $parameters): Response
     {
+        $config = $this->getConfig();
         $apiToken = $this->getToken();
 
-        $response = Http::withToken($apiToken)->$method($baseUrl.$endpoint, $parameters);
+        $response = Http::withToken($apiToken)->acceptJson()->withoutRedirecting()->connectTimeout($config['connect_timeout'])->timeout($config['timeout'])->$method($baseUrl.ltrim($endpoint, '/'), $parameters);
 
         if ($response->status() === 401) {
-            throw new UnauthorizedException('Unauthorized: Check your token');
+            Cache::forget('npm-api-token-'.md5($config['url'].$config['email']));
+            $response = Http::withToken($this->getToken())->acceptJson()->withoutRedirecting()->connectTimeout($config['connect_timeout'])->timeout($config['timeout'])->$method($baseUrl.ltrim($endpoint, '/'), $parameters);
+            if ($response->status() === 401) {
+                throw new UnauthorizedException('Unauthorized: Check your token');
+            }
+        }
+
+        if (! $response->successful()) {
+            throw new \RuntimeException('Nginx Proxy Manager request failed (HTTP '.$response->status().').');
         }
 
         return $response;
@@ -123,7 +141,7 @@ class ApiClient
 
     protected function getResponseCacheKey(string $method, string $endpoint, array $parameters, bool $asArray, array $config): string
     {
-        return 'npm-api-response-'.md5($config['url'].$method.$endpoint.json_encode($parameters).($asArray ? '1' : '0'));
+        return 'npm-api-response-'.md5($config['url'].$config['email'].$method.$endpoint.json_encode($parameters).($asArray ? '1' : '0'));
     }
 
     // ========================= base methods ======================================

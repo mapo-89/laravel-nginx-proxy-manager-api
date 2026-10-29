@@ -11,7 +11,7 @@ class Certs extends BaseApi
 
     public function create(array $data = []): array
     {
-        return $this->client->post('/nginx/certificates');
+        return $this->client->post('/nginx/certificates', $data);
     }
 
     public function renew(string $certiId): array

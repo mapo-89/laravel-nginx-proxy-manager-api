@@ -2,6 +2,8 @@
 
 // config for Mapo89/LaravelNginxProxyManagerApi
 return [
+    'timeout' => env('NPM_TIMEOUT', 15),
+    'connect_timeout' => env('NPM_CONNECT_TIMEOUT', 3),
     'base_url' => env('NPM_URL'),
     'email' => env('NPM_EMAIL'),
     'password' => env('NPM_PASSWORD'),
