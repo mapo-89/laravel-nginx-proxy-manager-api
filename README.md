@@ -3,9 +3,9 @@
 [![Version](https://img.shields.io/packagist/v/mapo-89/laravel-nginx-proxy-manager-api.svg?label=version&color=03a9f4)](https://packagist.org/packages/mapo-89/laravel-nginx-proxy-manager-api)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/mapo-89/laravel-nginx-proxy-manager-api/blob/main/LICENSE.md)
 [![PHP](https://img.shields.io/packagist/php-v/mapo-89/laravel-nginx-proxy-manager-api.svg?logo=php&logoColor=white)](https://packagist.org/packages/mapo-89/laravel-nginx-proxy-manager-api)
-[![Laravel](https://img.shields.io/badge/Laravel-11%20%7C%2012%20%7C%2013-FF2D20.svg?logo=laravel&logoColor=white)](https://laravel.com/)
+[![Laravel](https://img.shields.io/badge/Laravel-12%20%7C%2013-FF2D20.svg?logo=laravel&logoColor=white)](https://laravel.com/)
 [![Total Downloads](https://img.shields.io/packagist/dt/mapo-89/laravel-nginx-proxy-manager-api.svg)](https://packagist.org/packages/mapo-89/laravel-nginx-proxy-manager-api)
-[![GitHub Actions](https://github.com/mapo-89/laravel-nginx-proxy-manager-api/actions/workflows/run-tests.yml/badge.svg)](https://github.com/mapo-89/laravel-nginx-proxy-manager-api/actions/workflows/run-tests.yml)
+[![GitHub Actions](https://github.com/mapo-89/laravel-nginx-proxy-manager-api/actions/workflows/main.yml/badge.svg)](https://github.com/mapo-89/laravel-nginx-proxy-manager-api/actions/workflows/main.yml)
 [![GitHub issues](https://img.shields.io/github/issues/mapo-89/laravel-nginx-proxy-manager-api.svg)](https://github.com/mapo-89/laravel-nginx-proxy-manager-api/issues)
 [![GitHub stars](https://img.shields.io/github/stars/mapo-89/laravel-nginx-proxy-manager-api.svg?style=flat)](https://github.com/mapo-89/laravel-nginx-proxy-manager-api/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/mapo-89/laravel-nginx-proxy-manager-api.svg)](https://github.com/mapo-89/laravel-nginx-proxy-manager-api/commits/main)
@@ -18,7 +18,7 @@ certificate management, optional response caching and two-factor authentication.
 ## Requirements
 
 - PHP 8.4 or newer
-- Laravel 11, 12 or 13
+- Laravel 12 or 13
 - An Nginx Proxy Manager instance and API credentials
 
 ## Installation

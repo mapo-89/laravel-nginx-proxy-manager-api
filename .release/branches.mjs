@@ -102,9 +102,9 @@ export function main(argv = process.argv.slice(2)) {
     const { values } = parseArgs({ args, options: { version: { type: 'string' }, 'notes-file': { type: 'string' }, bump: { type: 'string', default: 'patch' }, base: { type: 'string' }, 'base-ref': { type: 'string' }, head: { type: 'string' }, ref: { type: 'string', default: 'HEAD' } } })
     if (command === 'start') console.log(startRelease(values.version, values.bump))
     else if (command === 'prepare') console.log(prepareRelease(values['notes-file']))
-    else if (command === 'merge') console.log(mergeRelease(values.version))
+    else if (command === 'merge') throw new Error('Merge releases only through a reviewed pull request; local main merges are disabled.')
     else if (command === 'check-pr') checkPullRequest(values.base, values.head, values.ref, values['base-ref'])
-    else throw new Error('Usage: node .release/branches.mjs <start [--version X.Y.Z|--bump patch|minor|major]|prepare [--notes-file FILE]|merge --version X.Y.Z|check-pr --base BRANCH --head BRANCH --ref SHA --base-ref BASE_SHA>')
+    else throw new Error('Usage: node .release/branches.mjs <start [--version X.Y.Z|--bump patch|minor|major]|prepare [--notes-file FILE]|check-pr --base BRANCH --head BRANCH --ref SHA --base-ref BASE_SHA>')
 }
 
 if (isMain(import.meta.url)) {

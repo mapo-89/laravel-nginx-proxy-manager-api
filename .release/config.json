@@ -4,7 +4,7 @@
     "hosting": "github",
     "tag_prefix": "v",
     "language": "en",
-    "publisher": "github",
+    "publisher": "existing",
     "version_commit": false,
     "release_branches": [
         "main"

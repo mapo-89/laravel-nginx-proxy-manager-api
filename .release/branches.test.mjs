@@ -201,3 +201,50 @@ test('direct release commits and squashed features can be mixed without squashin
     assert.ok(releaseCommits.includes('✨ Feature: Add direct implementation'))
     assert.ok(releaseCommits.includes('🐛 Fix: Correct direct implementation'))
 })
+
+test('local main merge command is disabled in favor of a reviewed PR', context => {
+    const f = setup(context); ready(f); f.git('switch', 'main')
+    const before = f.git('rev-parse', 'HEAD')
+    const result = f.cli(script, ['merge', '--version', '1.1.0'])
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /pull request/)
+    assert.equal(f.git('rev-parse', 'HEAD'), before)
+})
+
+test('cleanup removes only the published merged release branch and preserves its tag', async context => {
+    const { cleanupRelease } = await import('./cleanup.mjs')
+    const f = setup(context); ready(f); const releaseTip = f.git('rev-parse', 'HEAD')
+    f.git('switch', 'main'); const merge = mergeRelease('1.1.0'); f.git('tag', 'v1.1.0')
+    const remote = f.directory + '/remote.git'; f.git('init', '--bare', remote); f.git('remote', 'add', 'origin', remote)
+    f.git('push', 'origin', 'main', 'release/1.1.0', 'v1.1.0')
+    const published = { tag_name: 'v1.1.0', draft: false, prerelease: false, published_at: '2026-10-30T00:00:00Z', body: '# Release-Notes v1.1.0\n\n' + preparedNotes('v1.1.0', '1.1.0') }
+    assert.throws(() => cleanupRelease('1.1.0', merge, { ...published, draft: true }, []))
+    assert.throws(() => cleanupRelease('1.1.0', merge, { ...published, body: 'Changed notes' }, []), /changelog/)
+    assert.throws(() => cleanupRelease('1.1.0', merge, published, [{ number: 42 }]))
+    f.git('update-ref', 'refs/heads/release/1.1.0', merge)
+    f.git('push', 'origin', 'release/1.1.0')
+    assert.throws(() => cleanupRelease('1.1.0', merge, published, []), /additional work/)
+    f.git('update-ref', 'refs/heads/release/1.1.0', releaseTip)
+    f.git('push', '--force-with-lease=refs/heads/release/1.1.0:' + merge, 'origin', 'release/1.1.0')
+    cleanupRelease('1.1.0', merge, published, [])
+    assert.equal(f.git('ls-remote', '--heads', 'origin', 'refs/heads/release/1.1.0'), '')
+    assert.equal(f.git('rev-parse', 'v1.1.0^{commit}'), merge)
+    assert.equal(f.git('rev-parse', 'main'), merge)
+    assert.ok(cleanupRelease('1.1.0', merge, published, []).includes('removed'))
+})
+
+test('fixtures isolate CI environment from direct planner calls and restore it afterwards', () => {
+    const inherited = process.env.GITHUB_REF
+    let cleanup
+    try {
+        process.env.GITHUB_REF = 'refs/heads/release/9.9.9'
+        fixture({ after(callback) { cleanup = callback } })
+        assert.equal(process.env.GITHUB_REF, undefined)
+        cleanup(); cleanup = null
+        assert.equal(process.env.GITHUB_REF, 'refs/heads/release/9.9.9')
+    } finally {
+        cleanup?.()
+        if (inherited === undefined) delete process.env.GITHUB_REF
+        else process.env.GITHUB_REF = inherited
+    }
+})

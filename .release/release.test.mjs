@@ -6,6 +6,14 @@ import { fixture } from './fixture.mjs'
 import { checkCommits, compareVersions, planRelease, releaseNotes, renderNotes, validSubject } from './release.mjs'
 const script = fileURLToPath(new URL('./release.mjs', import.meta.url))
 
+test('existing Refactor commits remain valid and appear under Refactoring', () => {
+    const subject = '♻️ Refactor: Adopt Spatie Laravel Package Tools'
+    assert.equal(validSubject(subject), true)
+    const notes = renderNotes('v2.0.0', [subject])
+    assert.ok(notes.includes('### ♻️ Refactoring\n- Adopt Spatie Laravel Package Tools'))
+    assert.ok(!notes.includes('Other Changes'))
+})
+
 test('Core-Panel category order, historical fallback, and automation filtering', context => {
     const f = fixture(context); f.git('tag', 'v1.0.0')
     for (const subject of ['🐛 Fix: Handle unreadable images', '✨ Feature: Decode WebP', '♻️ Refactoring: Use package tools',

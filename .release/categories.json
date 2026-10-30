@@ -34,6 +34,7 @@
             "icon": "♻️",
             "prefixes": [
                 "♻️ Refactoring:",
+                "♻️ Refactor:",
                 "Refactor:"
             ],
             "de": "Refactoring"

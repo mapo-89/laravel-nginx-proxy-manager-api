@@ -12,9 +12,14 @@ update version metadata or CHANGELOG.md. Once the intended release scope is
 complete, run `node .release/branches.mjs prepare` once to collect its changes.
 If more commits follow preparation, defer the refresh until the release scope is
 complete again, then rerun prepare and checks before merging the release PR.
-Do not run prepare after every commit or merely to leave the branch prepared. Merge the prepared release into main with
-`--no-ff` and subject `🚀 Release: X.Y.Z`; tag/publish only that merge SHA after
-the required checks. Retarget dependency PRs to the active release branch.
+Do not run prepare after every commit or merely to leave the branch prepared.
+Merge the prepared release into main through a reviewed GitHub PR with a merge
+commit titled `🚀 Release: X.Y.Z`; tag/publish only that merge SHA after the
+required checks. Local main merges, direct pushes to main, and administrator
+bypasses are forbidden. Retarget dependency PRs to the active release branch.
+Remove a released branch only after successful publication and verification,
+using the guarded cleanup workflow; preserve branches with additional work or
+open PRs. Use a fresh release branch for each version.
 
 Keep existing tags, history, publisher/build/deployment approvals and user work.
 Never rewrite main to regroup commits from before the transition. Normal changes

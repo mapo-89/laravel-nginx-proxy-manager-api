@@ -79,21 +79,18 @@ untagged version. Existing
 published changelog entries remain immutable. To supply reviewed or translated
 notes, run `prepare --notes-file FILE` with a file outside the repository.
 
-Push the release branch only when authorized. Open a PR targeting main and use a
-**merge commit**, never squash/rebase, with title `🚀 Release: 1.3.0`. Alternatively,
-after reviewing/testing the prepared branch, use the local helper:
+Push the release branch only when authorized. Open a PR targeting main, wait
+for review and all required checks, and merge it on GitHub using a **merge commit**
+titled `🚀 Release: X.Y.Z`. Squash/rebase release merges are not allowed.
+All changes to main must go through a PR. Never merge a release locally and push
+main directly, and never use administrator bypasses or override required checks.
+The former `branches.mjs merge` command is disabled. Local merge fixtures in the
+release-tooling tests are isolated test repositories, not a publication path.
 
-```bash
-git switch main
-node .release/branches.mjs merge --version 1.3.0
-# Push main and the release branch only when authorized.
-```
-
-The helper refuses a changed main that is not an ancestor of the release branch.
-Merge the updated main into the release branch, resolve conflicts there, prepare
-again and rerun the checks. Never resolve product changes directly on the final
-main merge. Retain the release branch for traceability; delete a feature branch
-only after its squashed change has been verified and deletion is authorized.
+If main advances, integrate it into the release branch, resolve conflicts there,
+prepare again and rerun CI. Require an up-to-date base through branch protection
+so a later main update invalidates stale checks. The release tag identifies the
+successfully tested merge, regardless of whether the source branch still exists.
 Inspect releases with `git log --first-parent main` and individual release work
 with `git log main^1..main^2` at the relevant release merge.
 
@@ -109,13 +106,8 @@ when preparing a release branch; they no longer publish a direct marker commit.
 
 Manual workflow dispatch publishes/retries the prepared release merge already on
 main; an exact input version must match it. A manual dispatch cannot bypass the
-release-merge checks or synthesize another release. For the QR package, successful
+release-merge checks or synthesize another release. For this package, successful
 `run-tests` push CI remains required for the exact merge commit.
-
-For this package, publication runs the reusable PHP test matrix and code-quality
-workflows for the same commit as the release. Both must succeed before the
-publisher can create a tag or GitHub release. Ordinary commits skip these release
-jobs; their normal test and quality workflows still run independently.
 
 PRs targeting main must come from a prepared `release/X.Y.Z` branch.
 The policy job fetches the current remote main tip and passes it explicitly to
@@ -126,8 +118,26 @@ after a policy check has finished. Feature and
 Dependabot PRs belong on the active release branch and are squash-merged there.
 Retarget automatically opened dependency PRs from main before merging them;
 there is no fixed versioned release target in Dependabot configuration.
-Repository branch-protection rules should require the release-policy check and
-allow merge commits; configuring those hosted settings is a separate admin step.
+Repository branch-protection rules should require `Commit conventions and release
+tooling`, `Code quality`, and the PHP matrix checks from `main.yml`, and allow
+merge commits. Configuring those hosted settings is a separate admin step; retire
+references to the former `release-policy` and standalone quality jobs.
+
+### Cleanup after a successful release
+
+Use a fresh release/X.Y.Z branch for each version; never reuse a released branch.
+After CI, stable publication and changelog verification succeed, the final Release
+workflow step runs `.release/cleanup.mjs`. It verifies the tag's merge SHA and
+remote main ancestry, and deletes the source branch only if its tip is exactly
+the merge's second parent and no open PRs still target the release branch. An
+expected-tip lease prevents deleting work pushed after inspection. Missing remote
+branches are handled idempotently. Branches with extra work are preserved.
+
+The same helper removes a matching, inactive local branch if present. For other
+local checkouts, fetch/prune and delete the integrated branch with `git branch -d`
+after verifying the published tag. Keep the immutable tag and main merge; these
+retain the complete release history. Do not enable immediate head-branch deletion
+on PR merge as a substitute: a merged PR may still fail CI or publication.
 
 ### Version files and build identity
 
@@ -166,7 +176,7 @@ project-specific version metadata explicitly requires otherwise.
 
 ## Repository adapter
 
-Hosting: **github**. Tag prefix: **v**. Publisher: **github**.
+Hosting: **github**. Tag prefix: **v**. Publisher: **existing**.
 
 ## Dependency updates
 
@@ -201,4 +211,3 @@ GitHub uses `.github/dependabot.yml`. After this configuration reaches the
 repository default branch, enable Dependabot/version updates in repository settings
 if disabled. Private registries need dedicated Dependabot secrets and registry
 configuration; do not copy local Composer/npm or CLI credentials into the repository.
-Scaffold manifests are maintained, while test fixtures and vendored files are excluded.

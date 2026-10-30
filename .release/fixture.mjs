@@ -5,9 +5,18 @@ import { tmpdir } from 'node:os'
 
 export function fixture(context, options = {}) {
     const previous = process.cwd()
+    const inherited = new Map(['GITHUB_REF', 'GITHUB_OUTPUT', 'GITHUB_ENV'].map(key => [key, process.env[key]]))
+    for (const key of inherited.keys()) delete process.env[key]
     const directory = mkdtempSync(join(tmpdir(), 'release-tools-test-'))
     process.chdir(directory)
-    context.after(() => { process.chdir(previous); rmSync(directory, { recursive: true, force: true }) })
+    context.after(() => {
+        process.chdir(previous)
+        rmSync(directory, { recursive: true, force: true })
+        for (const [key, value] of inherited) {
+            if (value === undefined) delete process.env[key]
+            else process.env[key] = value
+        }
+    })
     const git = (...args) => execFileSync('git', args, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim()
     git('init', '-q', '--initial-branch=main')
     git('config', 'user.name', 'Release tests')
