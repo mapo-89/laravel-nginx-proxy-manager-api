@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 use Mapo89\LaravelNginxProxyManagerApi\NginxProxyManagerApi;
 
 beforeEach(function () {
@@ -46,8 +47,7 @@ it('creates a proxy host with valid data', function () {
         'forward_port' => 8080,
     ]);
 
-    Http::assertSent(fn ($request) =>
-        str_contains($request->url(), 'nginx/proxy-hosts')
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'nginx/proxy-hosts')
         && $request['forward_port'] === 8080
         && $request['domain_names'] === ['example.com']
     );
@@ -61,4 +61,4 @@ it('throws validation exception for missing required host data', function () {
     $api->hosts()->create([
         'forward_scheme' => 'http',
     ]);
-})->throws(\Illuminate\Validation\ValidationException::class);
+})->throws(ValidationException::class);

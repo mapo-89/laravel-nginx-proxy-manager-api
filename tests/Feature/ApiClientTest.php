@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Mapo89\LaravelNginxProxyManagerApi\Api\Utils\ApiClient;
+use Mapo89\LaravelNginxProxyManagerApi\Api\Utils\TwoFactorRequiredException;
 use Mapo89\LaravelNginxProxyManagerApi\NginxProxyManagerApi;
 
 beforeEach(function () {
@@ -98,4 +99,42 @@ it('supports finding updating and deleting hosts', function () {
     foreach (['GET', 'PUT', 'DELETE'] as $method) {
         Http::assertSent(fn ($request) => $request->method() === $method && $request->url() === 'http://localhost/api/nginx/proxy-hosts/7');
     }
+});
+
+it('recognizes two-factor challenges without caching them as API tokens', function () {
+    Http::preventStrayRequests();
+    Http::fake(['*tokens' => Http::response(['requires_2fa' => true, 'challenge_token' => 'private-challenge'])]);
+    try {
+        (new ApiClient)->getToken();
+        $this->fail('Expected two-factor authentication to be required.');
+    } catch (TwoFactorRequiredException $exception) {
+        expect($exception->getMessage())->not->toContain('private-challenge');
+    }
+});
+
+it('exchanges a two-factor challenge and code for a usable token', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        '*tokens' => Http::response(['requires_2fa' => true, 'challenge_token' => 'private-challenge']),
+        '*tokens/2fa' => Http::response(['token' => 'session-token', 'expires' => '2027-01-01T00:00:00Z']),
+    ]);
+    expect((new ApiClient)->authenticate('012345'))->toBe(['token' => 'session-token', 'expires' => '2027-01-01T00:00:00Z', 'two_factor' => true]);
+    Http::assertSent(fn ($request) => str_ends_with($request->url(), '/tokens/2fa') && $request['challenge_token'] === 'private-challenge' && $request['code'] === '012345');
+    Http::assertSentCount(2);
+});
+
+it('uses an explicit bearer without logging in again or retrying a rejected write', function () {
+    Http::preventStrayRequests();
+    Http::fake(['*proxy-hosts' => Http::response([], 401)]);
+    expect(fn () => (new ApiClient(['url' => 'https://npm.test', 'token' => 'session-token']))->post('nginx/proxy-hosts', []))->toThrow(RuntimeException::class);
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => $request->hasHeader('Authorization', 'Bearer session-token'));
+});
+
+it('renews a session through the authenticated refresh endpoint', function () {
+    Http::preventStrayRequests();
+    Http::fake(['*tokens' => Http::response(['token' => 'new-session', 'expires' => '2027-01-01T00:00:00Z'])]);
+    expect((new ApiClient)->refreshToken('old-session'))->toBe(['token' => 'new-session', 'expires' => '2027-01-01T00:00:00Z']);
+    Http::assertSent(fn ($request) => $request->method() === 'GET' && $request->hasHeader('Authorization', 'Bearer old-session'));
+    Http::assertSentCount(1);
 });
