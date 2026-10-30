@@ -46,6 +46,51 @@ it('caches the token', function () {
     Http::assertSentCount(1);
 });
 
+it('isolates cached tokens for different passwords', function () {
+    Http::preventStrayRequests();
+    Http::fake(['*tokens' => Http::sequence()->push(['token' => 'first'])->push(['token' => 'second'])]);
+
+    $first = new ApiClient(['password' => 'first-password']);
+    $second = new ApiClient(['password' => 'second-password']);
+
+    expect($first->getToken())->toBe('first')
+        ->and($second->getToken())->toBe('second')
+        ->and($first->getToken())->toBe('first')
+        ->and($second->getToken())->toBe('second');
+
+    Http::assertSentCount(2);
+});
+
+it('does not use a cached token to authenticate an invalid password', function () {
+    Http::preventStrayRequests();
+    Http::fake(['*tokens' => Http::sequence()->push(['token' => 'valid'])->push([], 401)]);
+
+    expect((new ApiClient(['password' => 'valid-password']))->getToken())->toBe('valid');
+    expect(fn () => (new ApiClient(['password' => 'invalid-password']))->getToken())
+        ->toThrow(RuntimeException::class);
+
+    Http::assertSentCount(2);
+});
+
+it('invalidates only the rejected credentials token on unauthorized responses', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        '*tokens' => Http::sequence()->push(['token' => 'first'])->push(['token' => 'second'])->push(['token' => 'renewed-second']),
+        '*proxy-hosts' => Http::sequence()->push([], 401)->push([]),
+    ]);
+
+    $first = new ApiClient(['password' => 'first-password']);
+    $second = new ApiClient(['password' => 'second-password']);
+    $first->getToken();
+    $second->getToken();
+    $second->get('nginx/proxy-hosts');
+
+    expect($first->getToken())->toBe('first')
+        ->and($second->getToken())->toBe('renewed-second');
+
+    Http::assertSentCount(5);
+});
+
 it('caches GET responses when enabled', function () {
     Config::set('nginx-proxy-manager-api.cache_responses', true);
     Config::set('nginx-proxy-manager-api.response_cache_ttl', 60);

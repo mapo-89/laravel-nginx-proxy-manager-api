@@ -66,11 +66,23 @@ class ApiClient
         if (is_string($config['token'] ?? null) && $config['token'] !== '') {
             return $config['token'];
         }
-        $cacheKey = 'npm-api-token-'.md5($config['url'].$config['email']);
+        $cacheKey = $this->getTokenCacheKey($config);
 
         return Cache::remember($cacheKey, $config['token_cache_ttl'] * 60, function () {
             return $this->authenticate()['token'];
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    protected function getTokenCacheKey(array $config): string
+    {
+        return 'npm-api-token-'.hash('sha256', json_encode([
+            $this->normalizeBaseUrl($config['url']),
+            $config['email'],
+            $config['password'],
+        ], JSON_THROW_ON_ERROR));
     }
 
     /** @return array{token: string, expires: mixed, two_factor: bool} */
@@ -171,7 +183,7 @@ class ApiClient
         $response = Http::withToken($apiToken)->acceptJson()->withoutRedirecting()->connectTimeout($config['connect_timeout'])->timeout($config['timeout'])->$method($baseUrl.ltrim($endpoint, '/'), $parameters);
 
         if ($response->status() === 401 && empty($config['token'])) {
-            Cache::forget('npm-api-token-'.md5($config['url'].$config['email']));
+            Cache::forget($this->getTokenCacheKey($config));
             $response = Http::withToken($this->getToken())->acceptJson()->withoutRedirecting()->connectTimeout($config['connect_timeout'])->timeout($config['timeout'])->$method($baseUrl.ltrim($endpoint, '/'), $parameters);
             if ($response->status() === 401) {
                 throw new UnauthorizedException('Unauthorized: Check your token');
