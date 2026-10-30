@@ -30,7 +30,7 @@ class ApiClient
     /**
      * @return array<string, mixed>
      */
-    protected function getConfig(): array
+    protected function getConfig(bool $requireAuthentication = true): array
     {
         $config = array_replace([
             'url' => config('nginx-proxy-manager-api.base_url'),
@@ -43,8 +43,12 @@ class ApiClient
             'connect_timeout' => config('nginx-proxy-manager-api.connect_timeout', 3),
         ], $this->config ?? []);
 
-        if (! isset($config['url']) || (empty($config['token']) && ! isset($config['email'], $config['password']))) {
-            throw new \InvalidArgumentException("Config must include 'url', 'email', and 'password'");
+        if (! isset($config['url'])) {
+            throw new \InvalidArgumentException("Config must include 'url'.");
+        }
+
+        if ($requireAuthentication && empty($config['token']) && ! isset($config['email'], $config['password'])) {
+            throw new \InvalidArgumentException("Config must include 'email' and 'password', or a bearer 'token'.");
         }
 
         return $config;
@@ -119,7 +123,11 @@ class ApiClient
     /** @return array{token: string, expires: mixed} */
     public function refreshToken(string $token): array
     {
-        $config = $this->getConfig();
+        if (trim($token) === '') {
+            throw new \InvalidArgumentException('A session token is required for renewal.');
+        }
+
+        $config = $this->getConfig(requireAuthentication: false);
         try {
             $response = Http::withToken($token)->acceptJson()->withoutRedirecting()->connectTimeout($config['connect_timeout'])->timeout($config['timeout'])
                 ->get($this->normalizeBaseUrl($config['url']).'tokens');

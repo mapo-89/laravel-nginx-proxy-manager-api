@@ -183,3 +183,39 @@ it('renews a session through the authenticated refresh endpoint', function () {
     Http::assertSent(fn ($request) => $request->method() === 'GET' && $request->hasHeader('Authorization', 'Bearer old-session'));
     Http::assertSentCount(1);
 });
+
+it('renews a session with only its token and instance URL', function () {
+    Config::set('nginx-proxy-manager-api.email', null);
+    Config::set('nginx-proxy-manager-api.password', null);
+    Http::preventStrayRequests();
+    Http::fake(['https://npm.test/api/tokens' => Http::response(['token' => 'renewed-session', 'expires' => '2027-01-01T00:00:00Z'])]);
+
+    $client = new ApiClient(['url' => 'https://npm.test']);
+
+    expect($client->refreshToken('existing-session')['token'])->toBe('renewed-session');
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => $request->method() === 'GET'
+        && $request->url() === 'https://npm.test/api/tokens'
+        && $request->hasHeader('Authorization', 'Bearer existing-session'));
+});
+
+it('rejects an empty refresh token before making requests', function (string $token) {
+    Http::preventStrayRequests();
+
+    expect(fn () => (new ApiClient)->refreshToken($token))->toThrow(InvalidArgumentException::class);
+
+    Http::assertNothingSent();
+})->with(['', '   ']);
+
+it('still requires credentials for login and an instance URL for renewal', function () {
+    Config::set('nginx-proxy-manager-api.email', null);
+    Config::set('nginx-proxy-manager-api.password', null);
+    Http::preventStrayRequests();
+
+    expect(fn () => (new ApiClient(['url' => 'https://npm.test']))->getToken())
+        ->toThrow(InvalidArgumentException::class);
+    expect(fn () => (new ApiClient(['url' => null]))->refreshToken('existing-session'))
+        ->toThrow(InvalidArgumentException::class);
+
+    Http::assertNothingSent();
+});

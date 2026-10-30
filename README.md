@@ -111,7 +111,8 @@ Host creation requires a nonempty `domain_names` array. Updates accept only the
 fields you want to change; `domain_names` must be nonempty when supplied. Set
 `certificate_id` or `access_list_id` to `0` to remove the respective association.
 Proxy hosts also support SSL, HSTS, HTTP/2, access lists, custom locations and
-advanced configuration. API resources return response arrays.
+advanced configuration. Forwarding ports must be between `1` and `65535`.
+API resources return response arrays.
 
 Use `hosts('redirection')` or `hosts('dead')` to list, find, update or delete those
 host types. `create()` currently supports proxy hosts only.
@@ -155,6 +156,9 @@ $hosts = $npm->hosts()->all();
 // Keep the returned token and expiry for subsequent requests.
 $renewed = $client->refreshToken($session['token']);
 ```
+
+`refreshToken()` only needs the instance URL and the supplied nonempty session
+token; login credentials are not required for renewal.
 
 `authenticate()` returns `token`, `expires` and `two_factor`. A login that requires
 a code throws `TwoFactorRequiredException` when no code is supplied. Login tokens

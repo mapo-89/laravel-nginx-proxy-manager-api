@@ -99,7 +99,7 @@ class Hosts extends BaseApi
             'domain_names.*' => 'required|string',
             'forward_scheme' => 'sometimes|string|in:http,https',
             'forward_host' => 'sometimes|string',
-            'forward_port' => 'sometimes|integer|min:1',
+            'forward_port' => 'sometimes|integer|min:1|max:65535',
             'certificate_id' => 'sometimes|integer|min:0',
             'ssl_forced' => 'sometimes|boolean',
             'hsts_enabled' => 'sometimes|boolean',

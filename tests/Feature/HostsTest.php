@@ -137,3 +137,30 @@ it('rejects invalid partial updates before making requests', function (array $da
     'null domains' => [['domain_names' => null]],
     'negative certificate' => [['certificate_id' => -1]],
 ]);
+
+it('rejects ports outside the TCP range before creating or updating hosts', function (int $port) {
+    Http::preventStrayRequests();
+
+    $hosts = NginxProxyManagerApi::make()->hosts();
+
+    expect(fn () => $hosts->create(['domain_names' => ['example.com'], 'forward_port' => $port]))
+        ->toThrow(ValidationException::class);
+    expect(fn () => $hosts->update(7, ['forward_port' => $port]))
+        ->toThrow(ValidationException::class);
+
+    Http::assertNothingSent();
+})->with([0, -1, 65536]);
+
+it('accepts ports at both ends of the TCP range', function (int $port) {
+    fakeNpmApi();
+
+    $hosts = NginxProxyManagerApi::make()->hosts();
+    $hosts->create(['domain_names' => ['example.com'], 'forward_port' => $port]);
+    $hosts->update(7, ['forward_port' => $port]);
+
+    foreach (['POST', 'PUT'] as $method) {
+        Http::assertSent(fn ($request) => $request->method() === $method
+            && str_contains($request->url(), '/nginx/proxy-hosts')
+            && $request['forward_port'] === $port);
+    }
+})->with([1, 65535]);
