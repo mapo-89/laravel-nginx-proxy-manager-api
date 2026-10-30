@@ -14,6 +14,9 @@ class NginxProxyManagerApi
         $this->client = $client ?? new ApiClient;
     }
 
+    /**
+     * @param  array<string, mixed>|null  $config
+     */
     public static function make(?array $config = null): self
     {
         return new self(
@@ -21,11 +24,17 @@ class NginxProxyManagerApi
         );
     }
 
+    /**
+     * @param  list<mixed>  $parameters
+     */
     public function __call(string $method, array $parameters): object
     {
         return $this->getApiInstance($method, $parameters);
     }
 
+    /**
+     * @param  list<mixed>  $parameters
+     */
     protected function getApiInstance(string $method, array $parameters = []): object
     {
         $class = __NAMESPACE__.'\\Api\\'.Str::studly($method);

@@ -22,6 +22,7 @@
         "illuminate/contracts": "^11.0||^12.0||^13.0"
     },
     "require-dev": {
+        "larastan/larastan": "^3.10",
         "laravel/pint": "^1.14",
         "nunomaduro/collision": "^8.8",
         "orchestra/testbench": "^9.0||^10.0||^11.0",
@@ -46,7 +47,19 @@
         "prepare": "@php vendor/bin/testbench package:discover --ansi",
         "test": "vendor/bin/pest",
         "test-coverage": "vendor/bin/pest --coverage",
-        "format": "vendor/bin/pint"
+        "format": "vendor/bin/pint",
+        "check-composer": "@composer validate --strict",
+        "check-autoload": "@composer dump-autoload --optimize --strict-psr --no-scripts",
+        "check-style": "pint --test",
+        "qa": [
+            "@check-composer",
+            "@check-autoload",
+            "@check-style",
+            "@analyse",
+            "@test",
+            "@composer audit"
+        ],
+        "analyse": "phpstan analyse --memory-limit=768M"
     },
     "config": {
         "sort-packages": true,

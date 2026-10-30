@@ -1,0 +1,82 @@
+name: Release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Release bump type
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+        required: true
+      version:
+        description: Optional exact stable SemVer version
+        type: string
+        required: false
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Require release branch
+        env:
+          RELEASE_BRANCH: ${{ github.ref_name }}
+        run: test "$RELEASE_BRANCH" = main
+      - name: Plan explicit release
+        id: plan
+        env:
+          RELEASE_EVENT: ${{ github.event_name == 'workflow_dispatch' && 'manual' || 'push' }}
+          INPUT_BUMP: ${{ inputs.bump || 'patch' }}
+          INPUT_VERSION: ${{ inputs.version || '' }}
+        run: >-
+          node .release/release.mjs plan --event "$RELEASE_EVENT"
+          --bump "$INPUT_BUMP" --version "$INPUT_VERSION"
+      - name: Validate release tooling
+        if: steps.plan.outputs.should_release == 'true'
+        run: node --test .release/release.test.mjs .release/changelog.test.mjs .release/branches.test.mjs
+      - name: Use prepared release merge
+        id: metadata
+        if: steps.plan.outputs.should_release == 'true'
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        if: steps.plan.outputs.should_release == 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.plan.outputs.version }}
+        run: node .release/release.mjs notes --version "$RELEASE_VERSION" > "$RUNNER_TEMP/release-notes.md"
+      - name: Publish release
+        if: steps.plan.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.plan.outputs.tag }}
+          RELEASE_SHA: ${{ steps.metadata.outputs.sha || steps.plan.outputs.sha }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; keeping it unchanged."
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" --target "$RELEASE_SHA" \
+            --title "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+      - name: Verify prepared release changelog
+        if: steps.plan.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.plan.outputs.version }}
+          RELEASE_TAG: ${{ steps.plan.outputs.tag }}
+          RELEASE_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --json body --jq .body > "$RUNNER_TEMP/changelog-notes.md"
+          gh auth setup-git
+          node .release/publish-changelog.mjs "$RELEASE_VERSION" "$RUNNER_TEMP/changelog-notes.md" "$RELEASE_BRANCH" "$RELEASE_TAG"

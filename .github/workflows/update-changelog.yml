@@ -1,32 +1,29 @@
-name: "Update Changelog"
-
+name: Update Changelog
 on:
   release:
     types: [released]
-
 permissions:
   contents: write
-
+concurrency:
+  group: release-changelog
+  cancel-in-progress: false
 jobs:
   update:
+    if: github.event.release.prerelease == false
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v5
         with:
+          fetch-depth: 0
           ref: main
-
-      - name: Update Changelog
-        uses: stefanzweifel/changelog-updater-action@v1
+      - uses: actions/setup-node@v4
         with:
-          latest-version: ${{ github.event.release.name }}
-          release-notes: ${{ github.event.release.body }}
-
-      - name: Commit updated CHANGELOG
-        uses: stefanzweifel/git-auto-commit-action@v7
-        with:
-          branch: main
-          commit_message: '📝 Docs: Update CHANGELOG'
-          file_pattern: CHANGELOG.md
+          node-version: '24'
+      - name: Verify published release notes
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_BRANCH: main
+        run: |
+          set -euo pipefail
+          NOTES_FILE="$RUNNER_TEMP/release-notes.md" node --input-type=module -e 'import { readFileSync, writeFileSync } from "node:fs"; const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")); writeFileSync(process.env.NOTES_FILE, event.release.body || "", "utf8")'
+          node .release/publish-changelog.mjs "$RELEASE_TAG" "$RUNNER_TEMP/release-notes.md" "$RELEASE_BRANCH" "$RELEASE_TAG"

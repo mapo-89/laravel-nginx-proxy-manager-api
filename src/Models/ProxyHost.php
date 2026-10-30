@@ -41,6 +41,9 @@ class ProxyHost extends ApiModel
         'locations' => 'array',
     ];
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function getDefaultAttributes(): array
     {
         return [

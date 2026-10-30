@@ -17,6 +17,9 @@ abstract class ApiModel extends Model
         parent::__construct($attributes);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function getDefaultAttributes(): array
     {
         return [];

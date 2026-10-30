@@ -99,3 +99,31 @@ Please review [our security policy](../../security/policy) on how to report secu
 ## License
 
 The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
+
+
+## Shared release workflow
+
+Commit types, explicit release triggers, and grouped release notes follow the
+[shared release standard](.release/README.md). Ordinary pushes do not publish
+production versions. Existing builds, artifact handling, and deployment approvals
+remain project-specific.
+
+## Release branch workflow
+
+Feature branches start from main and are squash-merged into release/X.Y.Z.
+Alternatively or additionally, commit directly on release/X.Y.Z; these commits
+remain separate and do not require squashing. Ordinary commits do not rewrite
+version metadata or CHANGELOG.md. Once the release scope is complete, run
+`node .release/branches.mjs prepare` once to collect all changes on that branch.
+If more commits follow, refresh preparation and checks together at finalization,
+rather than after each commit. Then merge the prepared release into main
+with --no-ff and subject `🚀 Release: X.Y.Z`. Publish the tested merge commit.
+The prepared changelog supplies the published release notes; no post-release
+changelog commit is created. See [.release/README.md](.release/README.md).
+
+## Automated dependency maintenance
+
+Dependabot proposes weekly dependency updates. Reviewed updates are retargeted to
+the active release branch, tested, and squash-merged through their PRs.
+See [.release/README.md](.release/README.md#dependency-updates) for the policy
+and activation requirements. Dependency PRs never authorize a release.

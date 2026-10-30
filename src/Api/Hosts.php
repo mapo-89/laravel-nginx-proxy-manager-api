@@ -12,6 +12,7 @@ class Hosts extends BaseApi
 {
     protected string $proxyType;
 
+    /** @var array<string, class-string<ProxyHost>> */
     protected array $modelMap = [
         ProxyType::PROXY => ProxyHost::class,
         // ProxyType::REDIRECTION => RedirectionHost::class,
@@ -25,16 +26,26 @@ class Hosts extends BaseApi
         $this->proxyType = $proxyType;
     }
 
+    /**
+     * @return array<array-key, mixed>
+     */
     public function all(): array
     {
         return $this->client->get("nginx/{$this->proxyType}-hosts");
     }
 
+    /**
+     * @return array<array-key, mixed>
+     */
     public function find(int $id): array
     {
         return $this->client->get("nginx/{$this->proxyType}-hosts/{$id}");
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<array-key, mixed>
+     */
     public function update(int $id, array $data): array
     {
         $this->validateHostData($data);
@@ -47,6 +58,11 @@ class Hosts extends BaseApi
         return $this->client->delete("nginx/{$this->proxyType}-hosts/{$id}");
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>|string  $firstArg
+     * @return array<array-key, mixed>
+     */
     public function create(array|string $firstArg, array $data = []): array
     {
         if (is_string($firstArg)) {
@@ -69,6 +85,9 @@ class Hosts extends BaseApi
         return $this->client->post("nginx/{$this->proxyType}-hosts", $host->toArray());
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
     protected function validateHostData(array $data): void
     {
         $validator = Validator::make($data, [

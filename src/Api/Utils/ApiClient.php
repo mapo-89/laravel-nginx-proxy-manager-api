@@ -16,13 +16,20 @@ use Illuminate\Validation\UnauthorizedException;
 
 class ApiClient
 {
+    /** @var array<string, mixed>|null */
     protected ?array $config;
 
+    /**
+     * @param  array<string, mixed>|null  $config
+     */
     public function __construct(?array $config = null)
     {
         $this->config = $config;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function getConfig(): array
     {
         $config = array_replace([
@@ -116,6 +123,8 @@ class ApiClient
 
     /**
      * Execute request
+     *
+     * @param  array<string, mixed>  $parameters
      */
     public function execute(string $method, string $endpoint = '', array $parameters = [], bool $asArray = true): mixed
     {
@@ -151,6 +160,9 @@ class ApiClient
         return $asArray ? $response->json() : $response->body();
     }
 
+    /**
+     * @param  array<string, mixed>  $parameters
+     */
     protected function performRequest(string $method, string $baseUrl, string $endpoint, array $parameters): Response
     {
         $config = $this->getConfig();
@@ -173,37 +185,59 @@ class ApiClient
         return $response;
     }
 
+    /**
+     * @param  array<string, mixed>  $config
+     */
     protected function shouldCacheResponse(string $method, bool $asArray, array $config): bool
     {
         return $method === 'get' && $config['cache_responses'];
     }
 
+    /**
+     * @param  array<string, mixed>  $parameters
+     * @param  array<string, mixed>  $config
+     */
     protected function getResponseCacheKey(string $method, string $endpoint, array $parameters, bool $asArray, array $config): string
     {
         return 'npm-api-response-'.md5($config['url'].($config['email'] ?? '').hash('sha256', ($config['token'] ?? '').($config['password'] ?? '')).$method.$endpoint.json_encode($parameters).($asArray ? '1' : '0'));
     }
 
     // ========================= base methods ======================================
+    /**
+     * @param  array<string, mixed>  $parameters
+     */
     public function get(string $url = '', array $parameters = [], bool $asArray = true): mixed
     {
         return $this->execute('get', $url, $parameters, $asArray);
     }
 
+    /**
+     * @param  array<string, mixed>  $parameters
+     */
     public function post(string $url = '', array $parameters = [], bool $asArray = true): mixed
     {
         return $this->execute('post', $url, $parameters, $asArray);
     }
 
+    /**
+     * @param  array<string, mixed>  $parameters
+     */
     public function put(string $url = '', array $parameters = [], bool $asArray = true): mixed
     {
         return $this->execute('put', $url, $parameters, $asArray);
     }
 
+    /**
+     * @param  array<string, mixed>  $parameters
+     */
     public function patch(string $url = '', array $parameters = [], bool $asArray = true): mixed
     {
         return $this->execute('patch', $url, $parameters, $asArray);
     }
 
+    /**
+     * @param  array<string, mixed>  $parameters
+     */
     public function delete(string $url = '', array $parameters = [], bool $asArray = true): mixed
     {
         return $this->execute('delete', $url, $parameters, $asArray);

@@ -53,3 +53,23 @@ If the project maintainer has any additional requirements, you will find them li
 - **Send coherent history** - Make sure each individual commit in your pull request is meaningful. If you had to make multiple intermediate commits while developing, please [squash them](https://www.git-scm.com/book/en/v2/Git-Tools-Rewriting-History#Changing-Multiple-Commit-Messages) before submitting.
 
 **Happy coding**!
+
+## Release branch workflow
+
+Feature branches start from main and are squash-merged into release/X.Y.Z.
+Alternatively or additionally, commit directly on release/X.Y.Z; these commits
+remain separate and do not require squashing. Ordinary commits do not rewrite
+version metadata or CHANGELOG.md. Once the release scope is complete, run
+`node .release/branches.mjs prepare` once to collect all changes on that branch.
+If more commits follow, refresh preparation and checks together at finalization,
+rather than after each commit. Then merge the prepared release into main
+with --no-ff and subject `🚀 Release: X.Y.Z`. Publish the tested merge commit.
+The prepared changelog supplies the published release notes; no post-release
+changelog commit is created. See [.release/README.md](.release/README.md).
+
+## Quality checks
+
+Run `composer qa` after `composer install`. It checks Composer metadata, PSR-4
+autoloading, Pint style, PHPStan/Larastan level 6, tests and dependency advisories.
+Use `composer format` to apply PHP style fixes. CI only checks files and never
+commits formatting changes. The audit needs network access.

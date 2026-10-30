@@ -18,6 +18,9 @@ class HostLocation extends ApiModel
         'forward_port' => 'integer',
     ];
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function getDefaultAttributes(): array
     {
         return [
