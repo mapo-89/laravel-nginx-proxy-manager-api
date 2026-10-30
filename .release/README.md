@@ -112,6 +112,11 @@ main; an exact input version must match it. A manual dispatch cannot bypass the
 release-merge checks or synthesize another release. For the QR package, successful
 `run-tests` push CI remains required for the exact merge commit.
 
+For this package, publication runs the reusable PHP test matrix and code-quality
+workflows for the same commit as the release. Both must succeed before the
+publisher can create a tag or GitHub release. Ordinary commits skip these release
+jobs; their normal test and quality workflows still run independently.
+
 PRs targeting main must come from a prepared `release/X.Y.Z` branch.
 The policy job fetches the current remote main tip and passes it explicitly to
 `check-pr --base-ref`; it does not rely on a potentially stale local main branch.

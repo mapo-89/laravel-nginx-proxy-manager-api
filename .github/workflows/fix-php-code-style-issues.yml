@@ -1,6 +1,7 @@
 name: Code quality
 
 on:
+  workflow_call:
   push:
   pull_request:
     types: [opened, synchronize, reopened, edited, ready_for_review]
@@ -9,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: quality-${{ github.ref }}
+  group: quality-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

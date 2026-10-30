@@ -17,11 +17,15 @@ on:
 concurrency:
   group: production-release
   cancel-in-progress: false
+permissions:
+  contents: read
 jobs:
-  release:
+  plan:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      should_release: ${{ steps.plan.outputs.should_release }}
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -42,25 +46,42 @@ jobs:
         run: >-
           node .release/release.mjs plan --event "$RELEASE_EVENT"
           --bump "$INPUT_BUMP" --version "$INPUT_VERSION"
+  php-tests:
+    needs: plan
+    if: needs.plan.outputs.should_release == 'true'
+    uses: ./.github/workflows/run-tests.yml
+  quality:
+    needs: plan
+    if: needs.plan.outputs.should_release == 'true'
+    uses: ./.github/workflows/fix-php-code-style-issues.yml
+  release:
+    needs: [plan, php-tests, quality]
+    if: needs.plan.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
       - name: Validate release tooling
-        if: steps.plan.outputs.should_release == 'true'
         run: node --test .release/release.test.mjs .release/changelog.test.mjs .release/branches.test.mjs
       - name: Use prepared release merge
         id: metadata
-        if: steps.plan.outputs.should_release == 'true'
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes
-        if: steps.plan.outputs.should_release == 'true'
         env:
-          RELEASE_VERSION: ${{ steps.plan.outputs.version }}
+          RELEASE_VERSION: ${{ needs.plan.outputs.version }}
         run: node .release/release.mjs notes --version "$RELEASE_VERSION" > "$RUNNER_TEMP/release-notes.md"
       - name: Publish release
-        if: steps.plan.outputs.should_release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.plan.outputs.tag }}
-          RELEASE_SHA: ${{ steps.metadata.outputs.sha || steps.plan.outputs.sha }}
+          RELEASE_TAG: ${{ needs.plan.outputs.tag }}
+          RELEASE_SHA: ${{ steps.metadata.outputs.sha }}
         run: |
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             echo "Release $RELEASE_TAG already exists; keeping it unchanged."
@@ -69,11 +90,10 @@ jobs:
           gh release create "$RELEASE_TAG" --target "$RELEASE_SHA" \
             --title "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
       - name: Verify prepared release changelog
-        if: steps.plan.outputs.should_release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ steps.plan.outputs.version }}
-          RELEASE_TAG: ${{ steps.plan.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+          RELEASE_TAG: ${{ needs.plan.outputs.tag }}
           RELEASE_BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
