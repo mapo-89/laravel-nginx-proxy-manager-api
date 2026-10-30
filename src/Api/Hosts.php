@@ -48,9 +48,9 @@ class Hosts extends BaseApi
      */
     public function update(int $id, array $data): array
     {
-        $this->validateHostData($data);
+        $this->validateHostData($data, partial: true);
 
-        return $this->client->put("nginx/{$this->proxyType}-hosts/{$id}", $data);
+        return $this->client->put("nginx/{$this->proxyType}-hosts/{$id}", $this->serializeHostData($data));
     }
 
     public function delete(int $id): mixed
@@ -82,21 +82,25 @@ class Hosts extends BaseApi
         $modelClass = $this->modelMap[$this->proxyType];
         $host = new $modelClass($data);
 
-        return $this->client->post("nginx/{$this->proxyType}-hosts", $host->toArray());
+        return $this->client->post("nginx/{$this->proxyType}-hosts", $this->serializeHostData($host->toArray()));
     }
 
     /**
      * @param  array<string, mixed>  $data
      */
-    protected function validateHostData(array $data): void
+    protected function validateHostData(array $data, bool $partial = false): void
     {
+        if ($partial && $data === []) {
+            throw ValidationException::withMessages(['data' => 'At least one host field is required.']);
+        }
+
         $validator = Validator::make($data, [
-            'domain_names' => 'required|array|min:1',
+            'domain_names' => $partial ? 'sometimes|required|array|min:1' : 'required|array|min:1',
             'domain_names.*' => 'required|string',
             'forward_scheme' => 'sometimes|string|in:http,https',
             'forward_host' => 'sometimes|string',
             'forward_port' => 'sometimes|integer|min:1',
-            'certificate_id' => 'sometimes|integer|min:1',
+            'certificate_id' => 'sometimes|integer|min:0',
             'ssl_forced' => 'sometimes|boolean',
             'hsts_enabled' => 'sometimes|boolean',
             'hsts_subdomains' => 'sometimes|boolean',
@@ -114,5 +118,18 @@ class Hosts extends BaseApi
         if ($validator->fails()) {
             throw new ValidationException($validator);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function serializeHostData(array $data): array
+    {
+        if (array_key_exists('meta', $data)) {
+            $data['meta'] = (object) $data['meta'];
+        }
+
+        return $data;
     }
 }

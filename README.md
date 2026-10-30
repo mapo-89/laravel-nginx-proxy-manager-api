@@ -107,9 +107,11 @@ $updated = $hosts->update(7, [
 $hosts->delete(7);
 ```
 
-Host creation and updates require a nonempty `domain_names` array. Proxy hosts
-also support SSL, HSTS, HTTP/2, access lists, custom locations and advanced
-configuration. API resources return response arrays.
+Host creation requires a nonempty `domain_names` array. Updates accept only the
+fields you want to change; `domain_names` must be nonempty when supplied. Set
+`certificate_id` or `access_list_id` to `0` to remove the respective association.
+Proxy hosts also support SSL, HSTS, HTTP/2, access lists, custom locations and
+advanced configuration. API resources return response arrays.
 
 Use `hosts('redirection')` or `hosts('dead')` to list, find, update or delete those
 host types. `create()` currently supports proxy hosts only.
