@@ -114,6 +114,17 @@ Proxy hosts also support SSL, HSTS, HTTP/2, access lists, custom locations and
 advanced configuration. Forwarding ports must be between `1` and `65535`.
 API resources return response arrays.
 
+Set `trust_forwarded_proto` to `true` or `false` when creating or updating a host
+to control whether Nginx Proxy Manager trusts the forwarded protocol header.
+The field is only sent when supplied, so older NPM versions remain usable without
+this option.
+
+Custom locations use a list of arrays, each with `path`, `forward_scheme`,
+`forward_host` and `forward_port`. Each port must be between `1` and `65535`.
+Optional fields are `id` (which may be `null`), `forward_path`, `advanced_config`
+and `access_list_id`. Supply `'locations' => []` in an update to remove all custom
+locations.
+
 Use `hosts('redirection')` or `hosts('dead')` to list, find, update or delete those
 host types. `create()` currently supports proxy hosts only.
 

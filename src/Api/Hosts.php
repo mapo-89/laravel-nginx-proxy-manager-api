@@ -104,6 +104,7 @@ class Hosts extends BaseApi
             'ssl_forced' => 'sometimes|boolean',
             'hsts_enabled' => 'sometimes|boolean',
             'hsts_subdomains' => 'sometimes|boolean',
+            'trust_forwarded_proto' => 'sometimes|boolean',
             'http2_support' => 'sometimes|boolean',
             'block_exploits' => 'sometimes|boolean',
             'caching_enabled' => 'sometimes|boolean',
@@ -112,7 +113,16 @@ class Hosts extends BaseApi
             'advanced_config' => 'sometimes|string',
             'enabled' => 'sometimes|boolean',
             'meta' => 'sometimes|array',
-            'locations' => 'sometimes|array',
+            'locations' => 'sometimes|array|list',
+            'locations.*' => 'required|array:id,path,forward_scheme,forward_host,forward_port,forward_path,advanced_config,access_list_id',
+            'locations.*.id' => 'sometimes|nullable|integer',
+            'locations.*.path' => 'required|string',
+            'locations.*.forward_scheme' => 'required|string|in:http,https',
+            'locations.*.forward_host' => 'required|string|max:255',
+            'locations.*.forward_port' => 'required|integer|min:1|max:65535',
+            'locations.*.forward_path' => 'sometimes|string',
+            'locations.*.advanced_config' => 'sometimes|string',
+            'locations.*.access_list_id' => 'sometimes|integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -126,6 +136,10 @@ class Hosts extends BaseApi
      */
     protected function serializeHostData(array $data): array
     {
+        if (array_key_exists('trust_forwarded_proto', $data)) {
+            $data['trust_forwarded_proto'] = (bool) $data['trust_forwarded_proto'];
+        }
+
         if (array_key_exists('meta', $data)) {
             $data['meta'] = (object) $data['meta'];
         }
