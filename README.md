@@ -21,6 +21,10 @@ certificate management, optional response caching and two-factor authentication.
 - Laravel 12 or 13
 - An Nginx Proxy Manager instance and API credentials
 
+NPM 2.16.0 is the pinned real-integration-test baseline. See the
+[public API contract](API.md) for compatibility and stability boundaries, and
+the [v1.0 readiness checklist](V1_READINESS.md) for outstanding release evidence.
+
 ## Installation
 
 ```bash
@@ -197,8 +201,11 @@ composer qa
 ```
 
 Tests use simulated API responses and do not need a running Nginx Proxy Manager
-instance. Run `composer test` for tests or `composer format` to apply PHP style
-fixes. CI checks formatting without creating commits.
+instance by default. Run `composer test` for these tests or `composer format` to
+apply PHP style fixes. CI also provisions a disposable NPM instance and runs
+`composer test:integration` for real API/2FA checks. See the
+[integration instructions](V1_READINESS.md#running-the-real-integration-test).
+CI checks formatting without creating commits.
 
 See [CONTRIBUTING](CONTRIBUTING.md) and the [release guide](.release/README.md)
 for development, dependency updates and releases. Changes are listed in

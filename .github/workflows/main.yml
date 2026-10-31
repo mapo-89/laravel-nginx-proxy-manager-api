@@ -125,3 +125,71 @@ jobs:
 
       - name: Execute tests
         run: composer test
+
+  integration:
+    name: NPM ${{ matrix.npm }} - PHP ${{ matrix.php }} - L${{ matrix.laravel }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        npm: ['2.16.0']
+        php: ['8.4', '8.5']
+        laravel: ['12.*', '13.*']
+        include:
+          - laravel: 12.*
+            testbench: 10.*
+          - laravel: 13.*
+            testbench: 11.*
+    services:
+      npm:
+        image: jc21/nginx-proxy-manager:${{ matrix.npm }}
+        env:
+          INITIAL_ADMIN_EMAIL: admin@example.test
+          INITIAL_ADMIN_PASSWORD: isolated-integration-password
+          DB_SQLITE_FILE: /data/database.sqlite
+          DISABLE_IPV6: 'true'
+        ports:
+          - 81/tcp
+        options: >-
+          --memory=1024m --memory-swap=1024m
+          --health-cmd "node -e \"fetch('http://127.0.0.1:81/api/').then(r=>r.json()).then(j=>process.exit(j.setup===true?0:1)).catch(()=>process.exit(1))\""
+          --health-interval=10s --health-timeout=5s --health-retries=24
+    env:
+      NPM_TEST_URL: http://127.0.0.1:${{ job.services.npm.ports[81] }}
+      NPM_TEST_EMAIL: admin@example.test
+      NPM_TEST_PASSWORD: isolated-integration-password
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v2
+          extensions: curl, mbstring, dom, fileinfo, pdo_sqlite, bcmath
+          coverage: none
+      - name: Install dependencies
+        run: |
+          composer require --dev "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
+          composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+      - name: Test real NPM API
+        run: composer test:integration
+
+  ci:
+    name: CI gate
+    needs: [quality, release-tooling, test, integration]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every check to succeed
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          RELEASE_TOOLING_RESULT: ${{ needs.release-tooling.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+        run: |
+          test "$QUALITY_RESULT" = success &&
+          test "$RELEASE_TOOLING_RESULT" = success &&
+          test "$TEST_RESULT" = success &&
+          test "$INTEGRATION_RESULT" = success

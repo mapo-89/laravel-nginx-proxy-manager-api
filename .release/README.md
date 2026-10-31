@@ -118,10 +118,11 @@ after a policy check has finished. Feature and
 Dependabot PRs belong on the active release branch and are squash-merged there.
 Retarget automatically opened dependency PRs from main before merging them;
 there is no fixed versioned release target in Dependabot configuration.
-Repository branch-protection rules should require `Commit conventions and release
-tooling`, `Code quality`, and the PHP matrix checks from `main.yml`, and allow
-merge commits. Configuring those hosted settings is a separate admin step; retire
-references to the former `release-policy` and standalone quality jobs.
+Repository branch-protection rules should require `CI gate` from `main.yml` and
+an up-to-date main base. That check aggregates quality, release tooling, the PHP
+matrix and real NPM integration. Allow merge commits. Configuring those hosted
+settings is a separate admin step; retire references to the former
+`release-policy` and standalone quality jobs. See [v1.0 readiness](../V1_READINESS.md).
 
 ### Cleanup after a successful release
 

@@ -82,3 +82,8 @@ CI runs quality checks, release-policy checks, and the PHP/Laravel test matrix i
 `.github/workflows/main.yml`. It supports PHP 8.4/8.5 and Laravel 12/13. Laravel 11
 is no longer supported. The Release workflow publishes only a successfully tested
 main merge; manual publication requires successful push CI for that exact SHA.
+
+The live NPM integration jobs are part of that same workflow and must pass too.
+`CI gate` aggregates all required checks and must be required by main-branch
+protection. The [API contract](API.md) and [v1.0 readiness checklist](V1_READINESS.md)
+describe compatibility promises, live-test setup and remaining hosted settings.

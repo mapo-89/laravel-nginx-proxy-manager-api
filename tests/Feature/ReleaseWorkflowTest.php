@@ -80,3 +80,29 @@ it('runs guarded cleanup only after publication and tagged changelog verificatio
         ->and($steps[$cleanupIndex]['if'])->not->toContain('always(', 'failure(', 'cancelled(')
         ->and($steps[$cleanupIndex]['run'])->toContain('--release-file', '--open-prs-file');
 });
+
+it('requires real NPM integration as part of the aggregate CI gate', function () {
+    $workflow = Yaml::parseFile(dirname(__DIR__, 2).'/.github/workflows/main.yml');
+    $integration = $workflow['jobs']['integration'];
+    $gate = $workflow['jobs']['ci'];
+    $gateStep = $gate['steps'][0];
+    $composer = json_decode(file_get_contents(dirname(__DIR__, 2).'/composer.json'), true);
+
+    expect($integration['strategy']['matrix']['npm'])->toBe(['2.16.0'])
+        ->and($integration['strategy']['matrix']['php'])->toBe(['8.4', '8.5'])
+        ->and($integration['strategy']['matrix']['laravel'])->toBe(['12.*', '13.*'])
+        ->and($integration['services']['npm']['image'])->toBe('jc21/nginx-proxy-manager:${{ matrix.npm }}')
+        ->and(implode("\n", array_column($integration['steps'], 'run')))->toContain('composer test:integration')
+        ->and($composer['scripts']['test'])->toContain('--exclude-group=integration')
+        ->and($composer['scripts']['test:integration'])->toContain('--group=integration')
+        ->and($gate['name'])->toBe('CI gate')
+        ->and($gate['if'])->toBe('always()')
+        ->and($gate['needs'])->toContain('quality', 'release-tooling', 'test', 'integration');
+
+    foreach ($gate['needs'] as $job) {
+        $expression = '${{ needs.'.$job.'.result }}';
+        $variable = array_search($expression, $gateStep['env'], true);
+        expect($variable)->not->toBeFalse();
+        expect($gateStep['run'])->toContain('test "$'.$variable.'" = success');
+    }
+});
