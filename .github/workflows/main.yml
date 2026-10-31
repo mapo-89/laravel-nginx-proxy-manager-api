@@ -151,6 +151,9 @@ jobs:
           DISABLE_IPV6: 'true'
         ports:
           - 81/tcp
+        volumes:
+          - /data
+          - /etc/letsencrypt
         options: >-
           --memory=1024m --memory-swap=1024m
           --health-cmd "node -e \"fetch('http://127.0.0.1:81/api/').then(r=>r.json()).then(j=>process.exit(j.setup===true?0:1)).catch(()=>process.exit(1))\""
