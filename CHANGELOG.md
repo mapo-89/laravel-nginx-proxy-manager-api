@@ -50,6 +50,8 @@ Initial release.
 - Define v1 API contracts and add real NPM release checks
 - Read persisted NPM host status after creation
 - Avoid expiring TOTP codes during live authentication
+- Require green draft PR checks before release preparation
+- Share preparation CI checks across supported hosts
 
 ### 📌 Other Changes
 - Fix styling
