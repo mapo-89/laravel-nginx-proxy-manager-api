@@ -46,7 +46,8 @@ straight on `release/X.Y.Z`, including multiple implementation or fix commits.
 Those direct commits remain separate; they do not have to be squashed. Mixing
 direct commits with squashed feature branches is supported. Ordinary work commits
 leave version metadata and CHANGELOG.md unchanged. Collect the release scope
-first, then run `prepare` once as a finalization step before the release PR merge.
+first, then validate the exact implementation commit through a draft release PR.
+Only after that CI is green, run `prepare` once before the release PR merge.
 Do not run it after every commit or just to keep a working branch prepared.
 The entire release still reaches main through one --no-ff merge commit.
 
@@ -65,19 +66,32 @@ node .release/branches.mjs start --version 1.3.0
 git merge --squash feature/example
 git commit -m '✨ Feature: Add example capability'
 # Continue normal work commits without regenerating the changelog.
-# Once all intended changes are integrated and the release is being finalized:
+# Push only when authorized and open a draft release PR targeting main.
+# Wait for all run-tests jobs on this exact commit to succeed, then:
 node .release/branches.mjs prepare
+# Push the prepared commit, mark the PR ready and require fresh CI plus review.
 ```
 
-`prepare` synchronizes the declared project version files and writes CHANGELOG.md
+This package configures `branch_workflow.prepare_ci.workflow` as `main.yml`.
+`prepare` uses an authenticated GitHub CLI (`gh`) to check the latest PR workflow
+run for the exact current SHA and release branch. A missing, pending, failed or
+cancelled run blocks preparation before changing files or creating a commit;
+an older successful run cannot hide a newer failure. An unchanged prepared tip
+remains an idempotent no-op. Repositories without that configuration retain the
+shared tooling's previous behavior.
+
+After this gate, `prepare` synchronizes the declared project version files and writes CHANGELOG.md
 using the shared release-note categories, then creates a metadata commit on the
 release branch. Run the project-specific checks on that prepared branch. If late
 fixes are needed, commit them normally and collect any further changes first.
-When the release is ready again, rerun `prepare` and checks once before merging;
+When the release is ready again, return the PR to draft and wait for green CI on
+the final fix commit before rerunning `prepare` and checks once before merging;
 do not regenerate metadata after each intermediate fix. This refreshes only the
 untagged version. Existing
 published changelog entries remain immutable. To supply reviewed or translated
-notes, run `prepare --notes-file FILE` with a file outside the repository.
+notes, run `prepare --notes-file FILE` with a file outside the repository. Late
+fixes can still require another preparation commit; this workflow avoids creating
+one for every failed CI attempt and never rewrites pushed history automatically.
 
 Push the release branch only when authorized. Open a PR targeting main, wait
 for review and all required checks, and merge it on GitHub using a **merge commit**
@@ -109,7 +123,10 @@ main; an exact input version must match it. A manual dispatch cannot bypass the
 release-merge checks or synthesize another release. For this package, successful
 `run-tests` push CI remains required for the exact merge commit.
 
-PRs targeting main must come from a prepared `release/X.Y.Z` branch.
+PRs targeting main must come from a `release/X.Y.Z` branch. Draft release PRs
+may run the complete CI suite before preparation; ready PRs must be prepared.
+The workflow passes GitHub's draft state to `check-pr --draft`; it does not skip
+quality, PHP tests, live integration or the aggregate gate for drafts.
 The policy job fetches the current remote main tip and passes it explicitly to
 `check-pr --base-ref`; it does not rely on a potentially stale local main branch.
 If that fetched tip is missing from the release branch, CI fails before merging.

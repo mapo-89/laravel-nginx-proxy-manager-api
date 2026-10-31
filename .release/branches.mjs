@@ -20,6 +20,22 @@ function branchVersion(branch) {
     return versionTuple(branch.slice(prefix.length)).join('.')
 }
 
+function requirePreparationCi(branch) {
+    const check = workflow().prepare_ci
+    if (!check) return
+    const sha = git('rev-parse', 'HEAD')
+    const runs = JSON.parse(execFileSync('gh', [
+        'run', 'list', '--workflow', check.workflow, '--branch', branch,
+        '--commit', sha, '--event', 'pull_request', '--limit', '100',
+        '--json', 'headSha,headBranch,event,status,conclusion',
+    ], { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }))
+    // gh returns newest runs first. An older success must not hide a pending or failed run.
+    const latest = runs.find(run => run.headSha === sha && run.headBranch === branch && run.event === 'pull_request')
+    if (latest?.status !== 'completed' || latest.conclusion !== 'success') {
+        throw new Error('Wait for successful release PR CI on the exact current commit before preparing the version. Keep the PR in draft until preparation is complete.')
+    }
+}
+
 export function startRelease(version = '', bump = 'patch') {
     clean()
     const { main, release_prefix: prefix } = workflow()
@@ -52,6 +68,7 @@ export function prepareRelease(notesFile = null) {
         verifyPreparedRelease('HEAD', number)
         return number
     }
+    requirePreparationCi(branch)
     if (settings.prepare_command) execFileSync(settings.prepare_command[0], [...settings.prepare_command.slice(1), number], { stdio: 'inherit' })
     syncVersion(number)
     const notes = notesFile ? readFileSync(notesFile, 'utf8') : releaseNotes(number, 'HEAD', null, null, false)
@@ -86,7 +103,7 @@ export function mergeRelease(version) {
     return git('rev-parse', 'HEAD')
 }
 
-export function checkPullRequest(base, head, ref, baseRef = null) {
+export function checkPullRequest(base, head, ref, baseRef = null, draft = false) {
     const { main } = workflow()
     if (base !== main) return
     if (!baseRef) throw new Error('The current main commit must be supplied explicitly with --base-ref')
@@ -94,17 +111,20 @@ export function checkPullRequest(base, head, ref, baseRef = null) {
     if (tryGit('merge-base', '--is-ancestor', currentMain, ref).status !== 0) {
         throw new Error('The release branch must include current main; update it, prepare again and rerun CI.')
     }
-    verifyPreparedRelease(ref, branchVersion(head))
+    const number = branchVersion(head)
+    // Draft release PRs run full CI before a version/changelog commit is created.
+    // Ready PRs and publication still require a prepared release tip.
+    if (!draft) verifyPreparedRelease(ref, number)
 }
 
 export function main(argv = process.argv.slice(2)) {
     const [command, ...args] = argv
-    const { values } = parseArgs({ args, options: { version: { type: 'string' }, 'notes-file': { type: 'string' }, bump: { type: 'string', default: 'patch' }, base: { type: 'string' }, 'base-ref': { type: 'string' }, head: { type: 'string' }, ref: { type: 'string', default: 'HEAD' } } })
+    const { values } = parseArgs({ args, options: { version: { type: 'string' }, 'notes-file': { type: 'string' }, bump: { type: 'string', default: 'patch' }, base: { type: 'string' }, 'base-ref': { type: 'string' }, head: { type: 'string' }, ref: { type: 'string', default: 'HEAD' }, draft: { type: 'boolean', default: false } } })
     if (command === 'start') console.log(startRelease(values.version, values.bump))
     else if (command === 'prepare') console.log(prepareRelease(values['notes-file']))
     else if (command === 'merge') throw new Error('Merge releases only through a reviewed pull request; local main merges are disabled.')
-    else if (command === 'check-pr') checkPullRequest(values.base, values.head, values.ref, values['base-ref'])
-    else throw new Error('Usage: node .release/branches.mjs <start [--version X.Y.Z|--bump patch|minor|major]|prepare [--notes-file FILE]|check-pr --base BRANCH --head BRANCH --ref SHA --base-ref BASE_SHA>')
+    else if (command === 'check-pr') checkPullRequest(values.base, values.head, values.ref, values['base-ref'], values.draft)
+    else throw new Error('Usage: node .release/branches.mjs <start [--version X.Y.Z|--bump patch|minor|major]|prepare [--notes-file FILE]|check-pr --base BRANCH --head BRANCH --ref SHA --base-ref BASE_SHA [--draft]>')
 }
 
 if (isMain(import.meta.url)) {

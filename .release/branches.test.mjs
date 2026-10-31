@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { fixture } from './fixture.mjs'
 import { checkPullRequest, mergeRelease, prepareRelease, startRelease } from './branches.mjs'
@@ -80,6 +80,48 @@ test('main pull requests require a prepared release branch; feature PRs to relea
     assert.equal(result.status, 0, result.stderr)
     result = f.cli(script, ['check-pr', '--base', 'release/1.1.0', '--head', 'feature/first'])
     assert.equal(result.status, 0, result.stderr)
+})
+
+test('draft release PRs can validate changes before preparation without relaxing ready PRs or publication', context => {
+    const f = setup(context)
+    startRelease('1.1.0'); f.commit('🐛 Fix: Finish implementation before versioning')
+    const args = ['check-pr', '--base', 'main', '--head', 'release/1.1.0', '--base-ref', 'main']
+    assert.equal(f.cli(script, [...args, '--draft']).status, 0)
+    assert.equal(f.cli(script, args).status, 1)
+    assert.throws(() => verifyPreparedRelease('HEAD', '1.1.0'))
+    assert.throws(() => checkPullRequest('main', 'feature/example', 'HEAD', 'main', true))
+    f.git('switch', 'main'); f.commit('🐛 Fix: Advance main')
+    f.git('switch', 'release/1.1.0')
+    assert.equal(f.cli(script, [...args, '--draft']).status, 1, 'Draft PRs must still include current main')
+})
+
+test('preparation waits for the latest exact-commit PR CI success before changing files or creating commits', context => {
+    const f = setup(context)
+    f.configure({ tag_prefix: 'v', branch_workflow: { main: 'main', release_prefix: 'release/', prepare_ci: { workflow: 'main.yml' } }, version_files: [{ path: 'version.json', keys: ['version'] }] })
+    f.git('add', '.release/config.json'); f.commit('🔧 Chore: Require green preparation CI')
+    startRelease('1.1.0'); f.commit('✨ Feature: Complete release scope')
+    const before = f.git('rev-parse', 'HEAD')
+    const bin = f.directory + '/.git/bin'
+    mkdirSync(bin)
+    const originalPath = process.env.PATH
+    process.env.PATH = bin + ':' + originalPath
+    context.after(() => { process.env.PATH = originalPath })
+    const success = { headSha: before, headBranch: 'release/1.1.0', event: 'pull_request', status: 'completed', conclusion: 'success' }
+    const mock = runs => writeFileSync(bin + '/gh', '#!/usr/bin/env node\nprocess.stdout.write(' + JSON.stringify(JSON.stringify(runs)) + ')\n', { mode: 0o755 })
+
+    for (const runs of [[], [{ ...success, headSha: '0'.repeat(40) }], [{ ...success, headBranch: 'feature/other' }], [{ ...success, event: 'push' }], [{ ...success, status: 'in_progress', conclusion: '' }, success], [{ ...success, conclusion: 'failure' }, success], [{ ...success, conclusion: 'cancelled' }]]) {
+        mock(runs)
+        assert.throws(() => prepareRelease(), /successful release PR CI/)
+        assert.equal(f.git('rev-parse', 'HEAD'), before)
+        assert.equal(f.git('status', '--porcelain'), '')
+        assert.equal(JSON.parse(readFileSync('version.json', 'utf8')).version, '1.0.0')
+    }
+
+    mock([success]); prepareRelease()
+    const prepared = f.git('rev-parse', 'HEAD')
+    verifyPreparedRelease('HEAD', '1.1.0')
+    mock([]); prepareRelease()
+    assert.equal(f.git('rev-parse', 'HEAD'), prepared, 'An unchanged prepared tip is an idempotent no-op')
 })
 
 test('published changelog verification keeps main unchanged and rejects modified release notes', context => {

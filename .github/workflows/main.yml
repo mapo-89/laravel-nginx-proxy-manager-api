@@ -59,13 +59,18 @@ jobs:
               BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
               HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
               HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+              PR_DRAFT: ${{ github.event.pull_request.draft }}
             shell: bash
             run: |
               set -euo pipefail
               if [ "$BASE_BRANCH" = main ]; then
                   git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
               fi
-              node .release/branches.mjs check-pr --base "$BASE_BRANCH" --head "$HEAD_BRANCH" --ref "$HEAD_SHA" --base-ref refs/remotes/origin/main
+              args=()
+              if [ "$PR_DRAFT" = true ]; then
+                  args+=(--draft)
+              fi
+              node .release/branches.mjs check-pr --base "$BASE_BRANCH" --head "$HEAD_BRANCH" --ref "$HEAD_SHA" --base-ref refs/remotes/origin/main "${args[@]}"
           - name: Check new commit messages
             env:
                 BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}

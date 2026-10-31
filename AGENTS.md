@@ -9,7 +9,10 @@ reviewed feature into the release branch with a categorized English commit.
 Direct categorized commits on release/X.Y.Z are equally allowed and do not need
 to be squashed. Both kinds of work may be mixed. Ordinary work commits do not
 update version metadata or CHANGELOG.md. Once the intended release scope is
-complete, run `node .release/branches.mjs prepare` once to collect its changes.
+complete, validate the exact implementation commit through a draft release PR.
+Only after its CI is green, run `node .release/branches.mjs prepare` once to
+collect its changes. Draft release PRs may run full CI without a prepared tip;
+ready PRs and publication still require a prepared release and fresh checks.
 If more commits follow preparation, defer the refresh until the release scope is
 complete again, then rerun prepare and checks before merging the release PR.
 Do not run prepare after every commit or merely to leave the branch prepared.
