@@ -49,6 +49,7 @@ Initial release.
 - Require Larastan 3.13 for static analysis
 - Define v1 API contracts and add real NPM release checks
 - Read persisted NPM host status after creation
+- Avoid expiring TOTP codes during live authentication
 
 ### 📌 Other Changes
 - Fix styling
