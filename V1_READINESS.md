@@ -18,9 +18,9 @@ branch and version/changelog metadata stay unchanged until release finalization.
 
 ## Evidence required before declaring 1.0 ready
 
-- [ ] A successful `run-tests` workflow for the final release-branch SHA:
+- [x] A successful `run-tests` workflow for the implemented release candidate:
   quality, release tooling, the full lowest/stable PHP matrix and all real NPM
-  integration jobs. A committed test or a mocked response is not live evidence.
+  integration jobs. See the recorded live evidence below.
 - [ ] A reviewer accepts the documented API boundaries and NPM support baseline.
 - [ ] GitHub enforces the intended main-branch rules below.
 - [ ] Only after the scope is final: authorize the target version, use its
@@ -30,6 +30,21 @@ The live test does not request public certificates or contact Let's Encrypt.
 Successful ACME issuance/renewal requires a separate controlled environment with
 appropriate domain/provider access if that behavior is part of the deployment's
 acceptance criteria. It is not claimed as verified by this CI container.
+
+## Verified CI evidence
+
+On 2026-10-31, [workflow run 41185644157](https://github.com/mapo-89/laravel-nginx-proxy-manager-api/actions/runs/41185644157)
+passed all 15 jobs for implementation commit `8090406669a140f16a8c58034bcb26813dbeffb2`:
+
+- Quality checks, dependency audit and release-tooling tests.
+- Eight PHP 8.4/8.5, Laravel 12/13, lowest/stable test combinations.
+- Four real NPM 2.16.0 integration combinations, including 2FA and cleanup.
+- The aggregate `CI gate`.
+
+The workflow fixes include required disposable NPM storage mounts and reading
+persisted host activation status after creation. Later changes and the final
+prepared release commit must receive their own successful CI run; this record
+does not authorize publication.
 
 ## GitHub main-branch settings
 
