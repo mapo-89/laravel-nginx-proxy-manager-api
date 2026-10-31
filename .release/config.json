@@ -13,7 +13,9 @@
         "main": "main",
         "release_prefix": "release/",
         "prepare_ci": {
-            "workflow": "main.yml"
+            "workflows": [
+                "main.yml"
+            ]
         }
     }
 }

@@ -97,7 +97,7 @@ test('draft release PRs can validate changes before preparation without relaxing
 
 test('preparation waits for the latest exact-commit PR CI success before changing files or creating commits', context => {
     const f = setup(context)
-    f.configure({ tag_prefix: 'v', branch_workflow: { main: 'main', release_prefix: 'release/', prepare_ci: { workflow: 'main.yml' } }, version_files: [{ path: 'version.json', keys: ['version'] }] })
+    f.configure({ hosting: 'github', tag_prefix: 'v', branch_workflow: { main: 'main', release_prefix: 'release/', prepare_ci: { workflow: 'main.yml' } }, version_files: [{ path: 'version.json', keys: ['version'] }] })
     f.git('add', '.release/config.json'); f.commit('🔧 Chore: Require green preparation CI')
     startRelease('1.1.0'); f.commit('✨ Feature: Complete release scope')
     const before = f.git('rev-parse', 'HEAD')

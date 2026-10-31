@@ -51,6 +51,24 @@ Only after that CI is green, run `prepare` once before the release PR merge.
 Do not run it after every commit or just to keep a working branch prepared.
 The entire release still reaches main through one --no-ff merge commit.
 
+### CI before version preparation
+
+Keep the release PR in draft while collecting changes. Run all application,
+quality and release-policy checks on its exact implementation SHA first. Only
+when the final scope and those checks are green, run `prepare` once. Push the
+prepared metadata commit, mark the PR ready, and require fresh checks plus review
+before the authorized merge. Do not prepare after each failed CI attempt.
+
+`branch_workflow.prepare_ci.workflows` lists every required workflow for this
+repository: `main.yml`. `prepare` checks each latest PR run for the current SHA and
+release branch before changing files or creating a version commit. Missing,
+pending, failed, cancelled or skipped CI blocks preparation; an older success
+cannot hide a newer failure. An unchanged prepared tip remains an idempotent
+no-op. Late fixes require new green draft CI before another final preparation;
+no pushed history is rewritten automatically.
+
+GitHub checks use an authenticated GitHub CLI (`gh`) with Actions read access.
+
 ### Preparing an explicitly requested release
 
 Work from a clean checkout. Fetch the relevant remotes and fast-forward local
@@ -72,15 +90,7 @@ node .release/branches.mjs prepare
 # Push the prepared commit, mark the PR ready and require fresh CI plus review.
 ```
 
-This package configures `branch_workflow.prepare_ci.workflow` as `main.yml`.
-`prepare` uses an authenticated GitHub CLI (`gh`) to check the latest PR workflow
-run for the exact current SHA and release branch. A missing, pending, failed or
-cancelled run blocks preparation before changing files or creating a commit;
-an older successful run cannot hide a newer failure. An unchanged prepared tip
-remains an idempotent no-op. Repositories without that configuration retain the
-shared tooling's previous behavior.
-
-After this gate, `prepare` synchronizes the declared project version files and writes CHANGELOG.md
+`prepare` synchronizes the declared project version files and writes CHANGELOG.md
 using the shared release-note categories, then creates a metadata commit on the
 release branch. Run the project-specific checks on that prepared branch. If late
 fixes are needed, commit them normally and collect any further changes first.
@@ -183,7 +193,7 @@ for compatibility. Preserve historical tags and old version entries.
 ### Checks
 
 ```bash
-node --test .release/release.test.mjs .release/changelog.test.mjs .release/branches.test.mjs
+node --test .release/release.test.mjs .release/changelog.test.mjs .release/branches.test.mjs .release/ci.test.mjs
 node .release/release.mjs notes --version 1.3.0
 ```
 

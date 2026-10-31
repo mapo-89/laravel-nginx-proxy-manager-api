@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
 import { config, git, isMain, planRelease, releaseNotes, syncVersion, stableTags, tryGit, verifyPreparedRelease, versionTuple } from './release.mjs'
 import { updateChangelog } from './changelog.mjs'
+import { requireGreenCi } from './ci.mjs'
 
 function workflow() {
     const value = config().branch_workflow
@@ -18,22 +19,6 @@ function branchVersion(branch) {
     const prefix = workflow().release_prefix
     if (!branch.startsWith(prefix)) throw new Error('Expected a release/X.Y.Z branch')
     return versionTuple(branch.slice(prefix.length)).join('.')
-}
-
-function requirePreparationCi(branch) {
-    const check = workflow().prepare_ci
-    if (!check) return
-    const sha = git('rev-parse', 'HEAD')
-    const runs = JSON.parse(execFileSync('gh', [
-        'run', 'list', '--workflow', check.workflow, '--branch', branch,
-        '--commit', sha, '--event', 'pull_request', '--limit', '100',
-        '--json', 'headSha,headBranch,event,status,conclusion',
-    ], { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }))
-    // gh returns newest runs first. An older success must not hide a pending or failed run.
-    const latest = runs.find(run => run.headSha === sha && run.headBranch === branch && run.event === 'pull_request')
-    if (latest?.status !== 'completed' || latest.conclusion !== 'success') {
-        throw new Error('Wait for successful release PR CI on the exact current commit before preparing the version. Keep the PR in draft until preparation is complete.')
-    }
 }
 
 export function startRelease(version = '', bump = 'patch') {
@@ -68,7 +53,7 @@ export function prepareRelease(notesFile = null) {
         verifyPreparedRelease('HEAD', number)
         return number
     }
-    requirePreparationCi(branch)
+    requireGreenCi(settings, branch, git('rev-parse', 'HEAD'))
     if (settings.prepare_command) execFileSync(settings.prepare_command[0], [...settings.prepare_command.slice(1), number], { stdio: 'inherit' })
     syncVersion(number)
     const notes = notesFile ? readFileSync(notesFile, 'utf8') : releaseNotes(number, 'HEAD', null, null, false)

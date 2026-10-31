@@ -85,7 +85,7 @@ jobs:
                 node .github/scripts/releases.mjs check-commits --base "$BASE_SHA" --ref "$HEAD_SHA"
           - name: Test release tooling
             run: |
-                node --test .release/release.test.mjs .release/changelog.test.mjs .release/branches.test.mjs
+                node --test .release/release.test.mjs .release/changelog.test.mjs .release/branches.test.mjs .release/ci.test.mjs
 
   test:
     runs-on: ubuntu-latest
