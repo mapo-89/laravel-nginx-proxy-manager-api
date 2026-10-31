@@ -87,11 +87,14 @@ it('requires real NPM integration as part of the aggregate CI gate', function ()
     $gate = $workflow['jobs']['ci'];
     $gateStep = $gate['steps'][0];
     $composer = json_decode(file_get_contents(dirname(__DIR__, 2).'/composer.json'), true);
+    $liveStep = collect($integration['steps'])->firstWhere('name', 'Test real NPM API');
 
     expect($integration['strategy']['matrix']['npm'])->toBe(['2.16.0'])
         ->and($integration['strategy']['matrix']['php'])->toBe(['8.4', '8.5'])
         ->and($integration['strategy']['matrix']['laravel'])->toBe(['12.*', '13.*'])
         ->and($integration['services']['npm']['image'])->toBe('jc21/nginx-proxy-manager:${{ matrix.npm }}')
+        ->and($integration['env'])->not->toHaveKey('NPM_TEST_URL')
+        ->and($liveStep['env']['NPM_TEST_URL'])->toBe('http://127.0.0.1:${{ job.services.npm.ports[\'81\'] }}')
         ->and(implode("\n", array_column($integration['steps'], 'run')))->toContain('composer test:integration')
         ->and($composer['scripts']['test'])->toContain('--exclude-group=integration')
         ->and($composer['scripts']['test:integration'])->toContain('--group=integration')

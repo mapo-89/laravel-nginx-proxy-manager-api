@@ -156,7 +156,6 @@ jobs:
           --health-cmd "node -e \"fetch('http://127.0.0.1:81/api/').then(r=>r.json()).then(j=>process.exit(j.setup===true?0:1)).catch(()=>process.exit(1))\""
           --health-interval=10s --health-timeout=5s --health-retries=24
     env:
-      NPM_TEST_URL: http://127.0.0.1:${{ job.services.npm.ports[81] }}
       NPM_TEST_EMAIL: admin@example.test
       NPM_TEST_PASSWORD: isolated-integration-password
     steps:
@@ -174,6 +173,8 @@ jobs:
           composer require --dev "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
           composer update --prefer-stable --prefer-dist --no-interaction --no-progress
       - name: Test real NPM API
+        env:
+          NPM_TEST_URL: http://127.0.0.1:${{ job.services.npm.ports['81'] }}
         run: composer test:integration
 
   ci:
