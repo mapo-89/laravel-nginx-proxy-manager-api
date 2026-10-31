@@ -116,7 +116,8 @@ fields you want to change; `domain_names` must be nonempty when supplied. Set
 `certificate_id` or `access_list_id` to `0` to remove the respective association.
 Proxy hosts also support SSL, HSTS, HTTP/2, access lists, custom locations and
 advanced configuration. Forwarding ports must be between `1` and `65535`.
-API resources return response arrays.
+Resource reads, creation and updates return response arrays. Deletion returns
+the decoded NPM result, which can be a boolean.
 
 Set `trust_forwarded_proto` to `true` or `false` when creating or updating a host
 to control whether Nginx Proxy Manager trusts the forwarded protocol header.

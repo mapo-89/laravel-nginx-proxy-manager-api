@@ -1,7 +1,8 @@
 # Version 1.0 readiness
 
-This is a verification checklist, not a release authorization. The working
-branch and version/changelog metadata stay unchanged until release finalization.
+This is a verification checklist, not a publication authorization. Version 1.0.0
+and its release PR are being prepared at the user's request; merging and
+publication still require explicit authorization and the required PR review.
 
 ## Implemented prerequisites
 
@@ -22,9 +23,17 @@ branch and version/changelog metadata stay unchanged until release finalization.
   quality, release tooling, the full lowest/stable PHP matrix and all real NPM
   integration jobs. See the recorded live evidence below.
 - [ ] A reviewer accepts the documented API boundaries and NPM support baseline.
-- [ ] GitHub enforces the intended main-branch rules below.
-- [ ] Only after the scope is final: authorize the target version, use its
-  `release/X.Y.Z` branch, run `prepare` once, and validate the prepared release.
+- [x] GitHub enforces the intended main-branch rules below.
+- [x] Authorize 1.0.0 and finalize the release scope after the technical API review.
+- [ ] Validate the prepared `release/1.0.0` candidate through its release PR CI.
+
+The technical API review on 2026-10-31 compared `API.md` and README examples with
+resource signatures, authentication and renewal, exceptions, validation,
+configuration, model serialization and the regression/integration coverage. No
+blocking discrepancy was found. The reviewed boundaries retain opt-in GET
+caching without write invalidation, proxy-only creation, NPM 2.16.0 as the live
+baseline and no claim of successful external ACME issuance. Human acceptance of
+that contract remains part of the required release PR review.
 
 The live test does not request public certificates or contact Let's Encrypt.
 Successful ACME issuance/renewal requires a separate controlled environment with
@@ -48,25 +57,25 @@ does not authorize publication.
 
 ## GitHub main-branch settings
 
-The visible active `main` ruleset was inspected on 2026-10-31. It requires a PR
-and one approval, but contains no required-status-check rule and allows merge,
-squash and rebase. Classic branch protection could not be inspected through the
-current GitHub connection (administration access is unavailable).
-
-An administrator should verify the combined rules and configure:
+The active [main ruleset](https://github.com/mapo-89/laravel-nginx-proxy-manager-api/rules/15077569)
+was updated with explicit user authorization and read back through the GitHub
+CLI on 2026-10-31. It enforces:
 
 1. Required status check: **CI gate** from `main.yml` (GitHub Actions).
 2. Require the branch to include the latest main before merging.
 3. Require a reviewed PR and preserve the existing approval requirement.
-4. Allow release PRs to reach main through a **merge commit**, never squash or
-   rebase. The repository policy prohibits using administrator bypasses.
+4. Allow release PRs to reach main only through a **merge commit**.
+5. No bypass actors; non-fast-forward updates remain prohibited.
+
+The required check is pinned to the GitHub Actions app (integration ID 15368).
+The classic branch-protection endpoint returned `Branch not protected` (404);
+the active ruleset supplies the protections above.
 
 The aggregate check covers `Code quality`, `Commit conventions and release
 tooling`, every PHP matrix job and every live NPM integration job. Requiring it
 avoids maintaining a separate required-check name for every matrix combination.
 
-No hosted protection setting is changed by committing these files. These rules
-must be verified by an administrator before v1.0 release approval.
+Committing this verification record does not itself change hosted settings.
 
 ## Running the real integration test
 
