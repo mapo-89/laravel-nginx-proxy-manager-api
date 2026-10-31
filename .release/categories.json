@@ -1,0 +1,141 @@
+{
+    "sections": [
+        {
+            "name": "Breaking Changes",
+            "icon": "💥",
+            "prefixes": [
+                "💥 Breaking:"
+            ],
+            "de": "Inkompatible Änderungen"
+        },
+        {
+            "name": "Features",
+            "icon": "✨",
+            "prefixes": [
+                "✨ Feature:",
+                "🎉 Init:",
+                "🛣️ Routes:",
+                "Feature:"
+            ],
+            "de": "Neue Funktionen"
+        },
+        {
+            "name": "Fixes",
+            "icon": "🐛",
+            "prefixes": [
+                "🐛 Fix:",
+                "Fix:",
+                "🚑 Hotfix:"
+            ],
+            "de": "Fehlerkorrekturen"
+        },
+        {
+            "name": "Refactoring",
+            "icon": "♻️",
+            "prefixes": [
+                "♻️ Refactoring:",
+                "♻️ Refactor:",
+                "Refactor:"
+            ],
+            "de": "Refactoring"
+        },
+        {
+            "name": "UI & Styling",
+            "icon": "🎨",
+            "prefixes": [
+                "🎨 Styling:",
+                "💄 UI:",
+                "UI:"
+            ],
+            "de": "Oberfläche & Gestaltung"
+        },
+        {
+            "name": "Documentation",
+            "icon": "📝",
+            "prefixes": [
+                "📝 Docs:",
+                "📚 Docs:",
+                "Docs:"
+            ],
+            "de": "Dokumentation"
+        },
+        {
+            "name": "Security",
+            "icon": "🔒",
+            "prefixes": [
+                "🔒 Security:",
+                "🛡️ Security:",
+                "Security:"
+            ],
+            "de": "Sicherheit"
+        },
+        {
+            "name": "Performance",
+            "icon": "⚡",
+            "prefixes": [
+                "⚡ Performance:",
+                "⚡️ Performance:",
+                "Performance:"
+            ],
+            "de": "Performance"
+        },
+        {
+            "name": "Deprecated",
+            "icon": "⚠️",
+            "prefixes": [
+                "⚠️ Deprecated:"
+            ],
+            "de": "Abgekündigt"
+        },
+        {
+            "name": "Removed",
+            "icon": "🔥",
+            "prefixes": [
+                "🔥 Remove:",
+                "Remove:"
+            ],
+            "de": "Entfernt"
+        },
+        {
+            "name": "Chores",
+            "icon": "🔧",
+            "prefixes": [
+                "🔧 Chore:",
+                "Chore:",
+                "📦 Deps:",
+                "⬆️ Deps:",
+                "⬇️ Deps:",
+                "🧪 Test:",
+                "🛠️ Tool:",
+                "🗃️ DB:",
+                "📊 Logs:",
+                "🔀 Merge:",
+                "🚚 Move:",
+                "✏️ Typo:",
+                "🙈 Gitignore:",
+                "🌐 i18n:",
+                "🔤 Text:"
+            ],
+            "de": "Wartung"
+        },
+        {
+            "name": "Deployment",
+            "icon": "🚀",
+            "prefixes": [
+                "🚀 Deploy:",
+                "Deploy:"
+            ],
+            "de": "Deployment"
+        }
+    ],
+    "ignored_prefixes": [
+        "Merge",
+        "merge ",
+        "⚙️ Chore: set version to ",
+        "🚀 Release:",
+        "🔖 Release:",
+        "📦 Update: Bump version to ",
+        "chore(release):",
+        "📝 Docs: Update CHANGELOG for "
+    ]
+}

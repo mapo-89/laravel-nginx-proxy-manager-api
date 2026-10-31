@@ -13,6 +13,7 @@ class ProxyHost extends ApiModel
         'ssl_forced',
         'hsts_enabled',
         'hsts_subdomains',
+        'trust_forwarded_proto',
         'http2_support',
         'block_exploits',
         'caching_enabled',
@@ -31,6 +32,7 @@ class ProxyHost extends ApiModel
         'ssl_forced' => 'boolean',
         'hsts_enabled' => 'boolean',
         'hsts_subdomains' => 'boolean',
+        'trust_forwarded_proto' => 'boolean',
         'http2_support' => 'boolean',
         'block_exploits' => 'boolean',
         'caching_enabled' => 'boolean',
@@ -41,6 +43,9 @@ class ProxyHost extends ApiModel
         'locations' => 'array',
     ];
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function getDefaultAttributes(): array
     {
         return [
@@ -48,7 +53,7 @@ class ProxyHost extends ApiModel
             'forward_scheme' => 'http',
             'forward_host' => '127.0.0.1',
             'forward_port' => 80,
-            'certificate_id' => null,
+            'certificate_id' => 0,
             'ssl_forced' => false,
             'hsts_enabled' => false,
             'hsts_subdomains' => false,
@@ -56,7 +61,7 @@ class ProxyHost extends ApiModel
             'block_exploits' => true,
             'caching_enabled' => false,
             'allow_websocket_upgrade' => true,
-            'access_list_id' => null,
+            'access_list_id' => 0,
             'advanced_config' => '',
             'enabled' => true,
             'meta' => [],

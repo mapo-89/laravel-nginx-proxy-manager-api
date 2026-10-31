@@ -1,0 +1,204 @@
+name: run-tests
+
+on:
+  push:
+    branches: [main, 'release/**']
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+    branches: [main, 'release/**']
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Code quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          extensions: curl, mbstring, dom, fileinfo, pdo_sqlite, bcmath
+          coverage: none
+      - name: Validate Composer metadata
+        run: composer validate --strict --no-check-lock
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+      - name: Check PSR-4 autoloading
+        run: composer check-autoload
+      - name: Check PHP formatting
+        run: composer check-style
+      - name: Analyse PHP
+        run: composer analyse
+      - name: Audit dependencies
+        run: composer audit
+
+  release-tooling:
+      name: Commit conventions and release tooling
+      runs-on: ubuntu-latest
+      permissions:
+          contents: read
+      steps:
+          - name: Checkout code
+            uses: actions/checkout@v7
+            with:
+                fetch-depth: 0
+          - name: Setup Node.js
+            uses: actions/setup-node@v7
+            with:
+                node-version: '24'
+          - name: Require prepared release PRs for main
+            if: github.event_name == 'pull_request'
+            env:
+              BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+              HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+              HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+              PR_DRAFT: ${{ github.event.pull_request.draft }}
+            shell: bash
+            run: |
+              set -euo pipefail
+              if [ "$BASE_BRANCH" = main ]; then
+                  git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+              fi
+              args=()
+              if [ "$PR_DRAFT" = true ]; then
+                  args+=(--draft)
+              fi
+              node .release/branches.mjs check-pr --base "$BASE_BRANCH" --head "$HEAD_BRANCH" --ref "$HEAD_SHA" --base-ref refs/remotes/origin/main "${args[@]}"
+          - name: Check new commit messages
+            env:
+                BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+                HEAD_SHA: ${{ github.sha }}
+            run: |
+                # A force push can remove the previous tip from the fetched history.
+                # Fetch that exact commit so the check still covers the full push.
+                if [[ -n "$BASE_SHA" && ! "$BASE_SHA" =~ ^0+$ ]] &&
+                   ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+                    git fetch --no-tags origin "$BASE_SHA"
+                fi
+                node .github/scripts/releases.mjs check-commits --base "$BASE_SHA" --ref "$HEAD_SHA"
+          - name: Test release tooling
+            run: |
+                node --test .release/release.test.mjs .release/changelog.test.mjs .release/branches.test.mjs .release/ci.test.mjs
+
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        php: ['8.4', '8.5']
+        laravel: ['12.*', '13.*']
+        stability: [prefer-stable, prefer-lowest]
+        include:
+          - laravel: 12.*
+            testbench: 10.*
+          - laravel: 13.*
+            testbench: 11.*
+
+    name: PHP ${{ matrix.php }} - L${{ matrix.laravel }} - ${{ matrix.stability }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v2
+          extensions: curl, mbstring, dom, fileinfo, pdo_sqlite, bcmath
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v6
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-${{ matrix.php }}-${{ matrix.laravel }}-${{ matrix.stability }}-${{ hashFiles('composer.json') }}
+          restore-keys: composer-${{ runner.os }}-${{ matrix.php }}-
+
+      - name: Install dependencies
+        run: |
+          composer require --dev "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
+          composer update --${{ matrix.stability }} --prefer-dist --no-interaction
+
+      - name: Execute tests
+        run: composer test
+
+  integration:
+    name: NPM ${{ matrix.npm }} - PHP ${{ matrix.php }} - L${{ matrix.laravel }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        npm: ['2.16.0']
+        php: ['8.4', '8.5']
+        laravel: ['12.*', '13.*']
+        include:
+          - laravel: 12.*
+            testbench: 10.*
+          - laravel: 13.*
+            testbench: 11.*
+    services:
+      npm:
+        image: jc21/nginx-proxy-manager:${{ matrix.npm }}
+        env:
+          INITIAL_ADMIN_EMAIL: admin@example.test
+          INITIAL_ADMIN_PASSWORD: isolated-integration-password
+          DB_SQLITE_FILE: /data/database.sqlite
+          DISABLE_IPV6: 'true'
+        ports:
+          - 81/tcp
+        volumes:
+          - /data
+          - /etc/letsencrypt
+        options: >-
+          --memory=1024m --memory-swap=1024m
+          --health-cmd "node -e \"fetch('http://127.0.0.1:81/api/').then(r=>r.json()).then(j=>process.exit(j.setup===true?0:1)).catch(()=>process.exit(1))\""
+          --health-interval=10s --health-timeout=5s --health-retries=24
+    env:
+      NPM_TEST_EMAIL: admin@example.test
+      NPM_TEST_PASSWORD: isolated-integration-password
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v2
+          extensions: curl, mbstring, dom, fileinfo, pdo_sqlite, bcmath
+          coverage: none
+      - name: Install dependencies
+        run: |
+          composer require --dev "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
+          composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+      - name: Test real NPM API
+        env:
+          NPM_TEST_URL: http://127.0.0.1:${{ job.services.npm.ports['81'] }}
+        run: composer test:integration
+
+  ci:
+    name: CI gate
+    needs: [quality, release-tooling, test, integration]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every check to succeed
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          RELEASE_TOOLING_RESULT: ${{ needs.release-tooling.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+        run: |
+          test "$QUALITY_RESULT" = success &&
+          test "$RELEASE_TOOLING_RESULT" = success &&
+          test "$TEST_RESULT" = success &&
+          test "$INTEGRATION_RESULT" = success

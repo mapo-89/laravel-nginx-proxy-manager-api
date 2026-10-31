@@ -1,0 +1,123 @@
+name: Release
+
+on:
+    workflow_run:
+        workflows: [run-tests]
+        types: [completed]
+        branches: [main]
+    workflow_dispatch:
+        inputs:
+            bump:
+                description: Release bump type
+                required: true
+                default: patch
+                type: choice
+                options: [patch, minor, major]
+            version:
+                description: Explicit stable version (overrides bump), e.g. 1.2.0
+                required: false
+                type: string
+
+concurrency:
+    group: package-release
+    cancel-in-progress: false
+
+jobs:
+    release:
+        if: >-
+            github.event_name == 'workflow_dispatch' ||
+            (github.event.workflow_run.conclusion == 'success' &&
+             github.event.workflow_run.event == 'push' &&
+             github.event.workflow_run.head_repository.full_name == github.repository)
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            actions: read
+            pull-requests: read
+        steps:
+            - name: Check release branch
+              env:
+                  RELEASE_BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+              run: test "$RELEASE_BRANCH" = main
+
+            - name: Checkout tested commit
+              uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+                  ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+                  persist-credentials: false
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v7
+              with:
+                  node-version: '24'
+
+            - name: Plan release
+              id: plan
+              env:
+                  RELEASE_EVENT: ${{ github.event_name == 'workflow_run' && 'push' || 'manual' }}
+                  INPUT_BUMP: ${{ inputs.bump || 'patch' }}
+                  INPUT_VERSION: ${{ inputs.version || '' }}
+              run: >-
+                  node .github/scripts/releases.mjs plan
+                  --event "$RELEASE_EVENT" --bump "$INPUT_BUMP" --version "$INPUT_VERSION"
+
+            - name: Verify CI for manual release
+              if: steps.plan.outputs.should_release == 'true' && github.event_name == 'workflow_dispatch'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  RELEASE_SHA: ${{ steps.plan.outputs.sha }}
+              run: |
+                  result="$(gh run list --workflow main.yml --commit "$RELEASE_SHA" --event push --json conclusion --jq 'any(.[]; .conclusion == "success")')"
+                  if [ "$result" != true ]; then
+                      echo 'A successful run-tests push workflow is required for this exact commit.'
+                      exit 1
+                  fi
+
+            - name: Generate release notes
+              if: steps.plan.outputs.should_release == 'true'
+              env:
+                  RELEASE_TAG: ${{ steps.plan.outputs.tag }}
+              run: |
+                  node .github/scripts/releases.mjs notes --version "$RELEASE_TAG" > "$RUNNER_TEMP/release-notes.md"
+                  cat "$RUNNER_TEMP/release-notes.md" >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Publish GitHub release
+              if: steps.plan.outputs.should_release == 'true'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  RELEASE_TAG: ${{ steps.plan.outputs.tag }}
+                  RELEASE_SHA: ${{ steps.plan.outputs.sha }}
+              run: |
+                  if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+                      echo "Release $RELEASE_TAG already exists; leaving it unchanged."
+                      exit 0
+                  fi
+                  gh release create "$RELEASE_TAG" --target "$RELEASE_SHA" \
+                      --title "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+            - name: Verify prepared release changelog
+              if: steps.plan.outputs.should_release == 'true'
+              env:
+                GH_TOKEN: ${{ github.token }}
+                RELEASE_VERSION: ${{ steps.plan.outputs.version }}
+                RELEASE_TAG: ${{ steps.plan.outputs.tag }}
+                RELEASE_BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+              run: |
+                set -euo pipefail
+                gh release view "$RELEASE_TAG" --json body --jq .body > "$RUNNER_TEMP/changelog-notes.md"
+                gh auth setup-git
+                node .release/publish-changelog.mjs "$RELEASE_VERSION" "$RUNNER_TEMP/changelog-notes.md" "$RELEASE_BRANCH" "$RELEASE_TAG"
+
+            - name: Remove successfully published release branch
+              if: steps.plan.outputs.should_release == 'true'
+              env:
+                GH_TOKEN: ${{ github.token }}
+                RELEASE_VERSION: ${{ steps.plan.outputs.version }}
+                RELEASE_TAG: ${{ steps.plan.outputs.tag }}
+                RELEASE_SHA: ${{ steps.plan.outputs.sha }}
+              run: |
+                set -euo pipefail
+                gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$RUNNER_TEMP/published-release.json"
+                gh api "repos/$GITHUB_REPOSITORY/pulls?state=open&base=release/$RELEASE_VERSION&per_page=1" > "$RUNNER_TEMP/open-release-prs.json"
+                node .release/cleanup.mjs --version "$RELEASE_VERSION" --sha "$RELEASE_SHA" \
+                  --release-file "$RUNNER_TEMP/published-release.json" --open-prs-file "$RUNNER_TEMP/open-release-prs.json"

@@ -12,6 +12,7 @@ class Hosts extends BaseApi
 {
     protected string $proxyType;
 
+    /** @var array<string, class-string<ProxyHost>> */
     protected array $modelMap = [
         ProxyType::PROXY => ProxyHost::class,
         // ProxyType::REDIRECTION => RedirectionHost::class,
@@ -25,21 +26,31 @@ class Hosts extends BaseApi
         $this->proxyType = $proxyType;
     }
 
+    /**
+     * @return array<array-key, mixed>
+     */
     public function all(): array
     {
         return $this->client->get("nginx/{$this->proxyType}-hosts");
     }
 
+    /**
+     * @return array<array-key, mixed>
+     */
     public function find(int $id): array
     {
         return $this->client->get("nginx/{$this->proxyType}-hosts/{$id}");
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<array-key, mixed>
+     */
     public function update(int $id, array $data): array
     {
-        $this->validateHostData($data);
+        $this->validateHostData($data, partial: true);
 
-        return $this->client->put("nginx/{$this->proxyType}-hosts/{$id}", $data);
+        return $this->client->put("nginx/{$this->proxyType}-hosts/{$id}", $this->serializeHostData($data));
     }
 
     public function delete(int $id): mixed
@@ -47,6 +58,11 @@ class Hosts extends BaseApi
         return $this->client->delete("nginx/{$this->proxyType}-hosts/{$id}");
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>|string  $firstArg
+     * @return array<array-key, mixed>
+     */
     public function create(array|string $firstArg, array $data = []): array
     {
         if (is_string($firstArg)) {
@@ -66,21 +82,29 @@ class Hosts extends BaseApi
         $modelClass = $this->modelMap[$this->proxyType];
         $host = new $modelClass($data);
 
-        return $this->client->post("nginx/{$this->proxyType}-hosts", $host->toArray());
+        return $this->client->post("nginx/{$this->proxyType}-hosts", $this->serializeHostData($host->toArray()));
     }
 
-    protected function validateHostData(array $data): void
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function validateHostData(array $data, bool $partial = false): void
     {
+        if ($partial && $data === []) {
+            throw ValidationException::withMessages(['data' => 'At least one host field is required.']);
+        }
+
         $validator = Validator::make($data, [
-            'domain_names' => 'required|array|min:1',
+            'domain_names' => $partial ? 'sometimes|required|array|min:1' : 'required|array|min:1',
             'domain_names.*' => 'required|string',
             'forward_scheme' => 'sometimes|string|in:http,https',
             'forward_host' => 'sometimes|string',
-            'forward_port' => 'sometimes|integer|min:1',
-            'certificate_id' => 'sometimes|integer|min:1',
+            'forward_port' => 'sometimes|integer|min:1|max:65535',
+            'certificate_id' => 'sometimes|integer|min:0',
             'ssl_forced' => 'sometimes|boolean',
             'hsts_enabled' => 'sometimes|boolean',
             'hsts_subdomains' => 'sometimes|boolean',
+            'trust_forwarded_proto' => 'sometimes|boolean',
             'http2_support' => 'sometimes|boolean',
             'block_exploits' => 'sometimes|boolean',
             'caching_enabled' => 'sometimes|boolean',
@@ -89,11 +113,37 @@ class Hosts extends BaseApi
             'advanced_config' => 'sometimes|string',
             'enabled' => 'sometimes|boolean',
             'meta' => 'sometimes|array',
-            'locations' => 'sometimes|array',
+            'locations' => 'sometimes|array|list',
+            'locations.*' => 'required|array:id,path,forward_scheme,forward_host,forward_port,forward_path,advanced_config,access_list_id',
+            'locations.*.id' => 'sometimes|nullable|integer',
+            'locations.*.path' => 'required|string',
+            'locations.*.forward_scheme' => 'required|string|in:http,https',
+            'locations.*.forward_host' => 'required|string|max:255',
+            'locations.*.forward_port' => 'required|integer|min:1|max:65535',
+            'locations.*.forward_path' => 'sometimes|string',
+            'locations.*.advanced_config' => 'sometimes|string',
+            'locations.*.access_list_id' => 'sometimes|integer|min:0',
         ]);
 
         if ($validator->fails()) {
             throw new ValidationException($validator);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function serializeHostData(array $data): array
+    {
+        if (array_key_exists('trust_forwarded_proto', $data)) {
+            $data['trust_forwarded_proto'] = (bool) $data['trust_forwarded_proto'];
+        }
+
+        if (array_key_exists('meta', $data)) {
+            $data['meta'] = (object) $data['meta'];
+        }
+
+        return $data;
     }
 }

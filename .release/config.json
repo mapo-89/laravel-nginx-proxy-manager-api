@@ -1,0 +1,21 @@
+{
+    "schema": 1,
+    "repository": "laravel-nginx-proxy-manager-api",
+    "hosting": "github",
+    "tag_prefix": "v",
+    "language": "en",
+    "publisher": "existing",
+    "version_commit": false,
+    "release_branches": [
+        "main"
+    ],
+    "branch_workflow": {
+        "main": "main",
+        "release_prefix": "release/",
+        "prepare_ci": {
+            "workflows": [
+                "main.yml"
+            ]
+        }
+    }
+}

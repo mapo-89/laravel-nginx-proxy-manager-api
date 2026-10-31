@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Mapo89\LaravelNginxProxyManagerApi\Api\Utils\ApiClient;
+use Mapo89\LaravelNginxProxyManagerApi\Api\Utils\TwoFactorRequiredException;
 use Mapo89\LaravelNginxProxyManagerApi\NginxProxyManagerApi;
 
 beforeEach(function () {
@@ -43,6 +44,51 @@ it('caches the token', function () {
     $client->getToken();
     $client->getToken();
     Http::assertSentCount(1);
+});
+
+it('isolates cached tokens for different passwords', function () {
+    Http::preventStrayRequests();
+    Http::fake(['*tokens' => Http::sequence()->push(['token' => 'first'])->push(['token' => 'second'])]);
+
+    $first = new ApiClient(['password' => 'first-password']);
+    $second = new ApiClient(['password' => 'second-password']);
+
+    expect($first->getToken())->toBe('first')
+        ->and($second->getToken())->toBe('second')
+        ->and($first->getToken())->toBe('first')
+        ->and($second->getToken())->toBe('second');
+
+    Http::assertSentCount(2);
+});
+
+it('does not use a cached token to authenticate an invalid password', function () {
+    Http::preventStrayRequests();
+    Http::fake(['*tokens' => Http::sequence()->push(['token' => 'valid'])->push([], 401)]);
+
+    expect((new ApiClient(['password' => 'valid-password']))->getToken())->toBe('valid');
+    expect(fn () => (new ApiClient(['password' => 'invalid-password']))->getToken())
+        ->toThrow(RuntimeException::class);
+
+    Http::assertSentCount(2);
+});
+
+it('invalidates only the rejected credentials token on unauthorized responses', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        '*tokens' => Http::sequence()->push(['token' => 'first'])->push(['token' => 'second'])->push(['token' => 'renewed-second']),
+        '*proxy-hosts' => Http::sequence()->push([], 401)->push([]),
+    ]);
+
+    $first = new ApiClient(['password' => 'first-password']);
+    $second = new ApiClient(['password' => 'second-password']);
+    $first->getToken();
+    $second->getToken();
+    $second->get('nginx/proxy-hosts');
+
+    expect($first->getToken())->toBe('first')
+        ->and($second->getToken())->toBe('renewed-second');
+
+    Http::assertSentCount(5);
 });
 
 it('caches GET responses when enabled', function () {
@@ -98,4 +144,78 @@ it('supports finding updating and deleting hosts', function () {
     foreach (['GET', 'PUT', 'DELETE'] as $method) {
         Http::assertSent(fn ($request) => $request->method() === $method && $request->url() === 'http://localhost/api/nginx/proxy-hosts/7');
     }
+});
+
+it('recognizes two-factor challenges without caching them as API tokens', function () {
+    Http::preventStrayRequests();
+    Http::fake(['*tokens' => Http::response(['requires_2fa' => true, 'challenge_token' => 'private-challenge'])]);
+    try {
+        (new ApiClient)->getToken();
+        $this->fail('Expected two-factor authentication to be required.');
+    } catch (TwoFactorRequiredException $exception) {
+        expect($exception->getMessage())->not->toContain('private-challenge');
+    }
+});
+
+it('exchanges a two-factor challenge and code for a usable token', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        '*tokens' => Http::response(['requires_2fa' => true, 'challenge_token' => 'private-challenge']),
+        '*tokens/2fa' => Http::response(['token' => 'session-token', 'expires' => '2027-01-01T00:00:00Z']),
+    ]);
+    expect((new ApiClient)->authenticate('012345'))->toBe(['token' => 'session-token', 'expires' => '2027-01-01T00:00:00Z', 'two_factor' => true]);
+    Http::assertSent(fn ($request) => str_ends_with($request->url(), '/tokens/2fa') && $request['challenge_token'] === 'private-challenge' && $request['code'] === '012345');
+    Http::assertSentCount(2);
+});
+
+it('uses an explicit bearer without logging in again or retrying a rejected write', function () {
+    Http::preventStrayRequests();
+    Http::fake(['*proxy-hosts' => Http::response([], 401)]);
+    expect(fn () => (new ApiClient(['url' => 'https://npm.test', 'token' => 'session-token']))->post('nginx/proxy-hosts', []))->toThrow(RuntimeException::class);
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => $request->hasHeader('Authorization', 'Bearer session-token'));
+});
+
+it('renews a session through the authenticated refresh endpoint', function () {
+    Http::preventStrayRequests();
+    Http::fake(['*tokens' => Http::response(['token' => 'new-session', 'expires' => '2027-01-01T00:00:00Z'])]);
+    expect((new ApiClient)->refreshToken('old-session'))->toBe(['token' => 'new-session', 'expires' => '2027-01-01T00:00:00Z']);
+    Http::assertSent(fn ($request) => $request->method() === 'GET' && $request->hasHeader('Authorization', 'Bearer old-session'));
+    Http::assertSentCount(1);
+});
+
+it('renews a session with only its token and instance URL', function () {
+    Config::set('nginx-proxy-manager-api.email', null);
+    Config::set('nginx-proxy-manager-api.password', null);
+    Http::preventStrayRequests();
+    Http::fake(['https://npm.test/api/tokens' => Http::response(['token' => 'renewed-session', 'expires' => '2027-01-01T00:00:00Z'])]);
+
+    $client = new ApiClient(['url' => 'https://npm.test']);
+
+    expect($client->refreshToken('existing-session')['token'])->toBe('renewed-session');
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => $request->method() === 'GET'
+        && $request->url() === 'https://npm.test/api/tokens'
+        && $request->hasHeader('Authorization', 'Bearer existing-session'));
+});
+
+it('rejects an empty refresh token before making requests', function (string $token) {
+    Http::preventStrayRequests();
+
+    expect(fn () => (new ApiClient)->refreshToken($token))->toThrow(InvalidArgumentException::class);
+
+    Http::assertNothingSent();
+})->with(['', '   ']);
+
+it('still requires credentials for login and an instance URL for renewal', function () {
+    Config::set('nginx-proxy-manager-api.email', null);
+    Config::set('nginx-proxy-manager-api.password', null);
+    Http::preventStrayRequests();
+
+    expect(fn () => (new ApiClient(['url' => 'https://npm.test']))->getToken())
+        ->toThrow(InvalidArgumentException::class);
+    expect(fn () => (new ApiClient(['url' => null]))->refreshToken('existing-session'))
+        ->toThrow(InvalidArgumentException::class);
+
+    Http::assertNothingSent();
 });

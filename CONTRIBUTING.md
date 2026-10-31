@@ -53,3 +53,37 @@ If the project maintainer has any additional requirements, you will find them li
 - **Send coherent history** - Make sure each individual commit in your pull request is meaningful. If you had to make multiple intermediate commits while developing, please [squash them](https://www.git-scm.com/book/en/v2/Git-Tools-Rewriting-History#Changing-Multiple-Commit-Messages) before submitting.
 
 **Happy coding**!
+
+## Release branch workflow
+
+Feature branches start from main and are squash-merged into release/X.Y.Z.
+Alternatively or additionally, commit directly on release/X.Y.Z; these commits
+remain separate and do not require squashing. Ordinary commits do not rewrite
+version metadata or CHANGELOG.md. Once the release scope is complete, run
+`node .release/branches.mjs prepare` once to collect all changes on that branch.
+If more commits follow, refresh preparation and checks together at finalization,
+rather than after each commit. Then merge the prepared release into main through
+a reviewed GitHub PR with a merge commit titled `🚀 Release: X.Y.Z`. Local main
+merges, direct pushes to main, and administrator bypasses are forbidden. Publish
+the tested merge commit. After successful publication and verification, the
+guarded cleanup removes the released branch if no additional work or open PRs
+remain. Use a fresh release branch for each version.
+The prepared changelog supplies the published release notes; no post-release
+changelog commit is created. See [.release/README.md](.release/README.md).
+
+## Quality checks
+
+Run `composer qa` after `composer install`. It checks Composer metadata, PSR-4
+autoloading, Pint style, PHPStan/Larastan level 6, tests and dependency advisories.
+Use `composer format` to apply PHP style fixes. CI only checks files and never
+commits formatting changes. The audit needs network access.
+
+CI runs quality checks, release-policy checks, and the PHP/Laravel test matrix in
+`.github/workflows/main.yml`. It supports PHP 8.4/8.5 and Laravel 12/13. Laravel 11
+is no longer supported. The Release workflow publishes only a successfully tested
+main merge; manual publication requires successful push CI for that exact SHA.
+
+The live NPM integration jobs are part of that same workflow and must pass too.
+`CI gate` aggregates all required checks and must be required by main-branch
+protection. The [API contract](API.md) and [v1.0 readiness checklist](V1_READINESS.md)
+describe compatibility promises, live-test setup and remaining hosted settings.
