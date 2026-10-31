@@ -54,11 +54,16 @@ it('exercises authentication, hosts, certificates and two-factor sessions agains
             ]],
         ]);
         $hostId = $host['id'];
+        // Creation returns the pre-configuration row; re-read persisted nginx status.
+        $storedHost = $api->hosts()->find($hostId);
+        $this->assertTrue(
+            $storedHost['meta']['nginx_online'] ?? false,
+            'NPM could not activate the test proxy host: '.($storedHost['meta']['nginx_err'] ?? 'no details'),
+        );
         expect($host['trust_forwarded_proto'])->toBeTrue()
-            ->and($host['meta']['nginx_online'] ?? false)->toBeTrue()
             ->and($host['locations'][0]['path'])->toBe('/app')
             ->and(array_column($api->hosts()->all(), 'id'))->toContain($hostId)
-            ->and($api->hosts()->find($hostId)['domain_names'])->toBe([$prefix.'.example.test']);
+            ->and($storedHost['domain_names'])->toBe([$prefix.'.example.test']);
 
         $updated = $api->hosts()->update($hostId, ['forward_port' => 8082, 'trust_forwarded_proto' => false]);
         expect($updated['forward_port'])->toBe(8082)
