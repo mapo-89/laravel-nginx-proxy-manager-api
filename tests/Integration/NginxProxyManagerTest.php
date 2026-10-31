@@ -93,10 +93,10 @@ it('exercises authentication, hosts, certificates and two-factor sessions agains
         $userId = $user['id'];
         $userLogin = new ApiClient(['url' => $url, 'email' => $testEmail, 'password' => $testPassword]);
         $setup = $admin->post("users/{$userId}/2fa");
-        $admin->post("users/{$userId}/2fa/enable", ['code' => Totp::code($setup['secret'])]);
+        $admin->post("users/{$userId}/2fa/enable", ['code' => Totp::freshCode($setup['secret'])]);
 
         expect(fn () => $userLogin->getToken())->toThrow(TwoFactorRequiredException::class);
-        $session = $userLogin->authenticate(Totp::code($setup['secret']));
+        $session = $userLogin->authenticate(Totp::freshCode($setup['secret']));
         expect($session['two_factor'])->toBeTrue();
         $sessionApi = NginxProxyManagerApi::make(['url' => $url, 'token' => $session['token'], 'cache_responses' => false]);
         expect($sessionApi->hosts()->all())->toBeArray();

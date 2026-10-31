@@ -4,6 +4,28 @@ namespace Mapo89\LaravelNginxProxyManagerApi\Tests\Support;
 
 final class Totp
 {
+    /**
+     * Leave time for password verification and HTTP round trips before expiry.
+     *
+     * @param  (\Closure(): int)|null  $clock
+     * @param  (\Closure(int): mixed)|null  $wait
+     */
+    public static function freshCode(string $secret, ?\Closure $clock = null, ?\Closure $wait = null): string
+    {
+        $clock ??= static fn (): int => time();
+        $wait ??= static fn (int $seconds): int => sleep($seconds);
+
+        while (true) {
+            $timestamp = $clock();
+            $remaining = 30 - ($timestamp % 30);
+            if ($remaining > 5) {
+                return self::code($secret, $timestamp);
+            }
+
+            $wait($remaining);
+        }
+    }
+
     public static function code(string $secret, ?int $timestamp = null): string
     {
         $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
