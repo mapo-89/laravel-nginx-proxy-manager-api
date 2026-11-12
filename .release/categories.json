@@ -97,14 +97,21 @@
             "de": "Entfernt"
         },
         {
+            "name": "Dependencies",
+            "icon": "📦",
+            "prefixes": [
+                "📦 Deps:",
+                "⬆️ Deps:",
+                "⬇️ Deps:"
+            ],
+            "de": "Abhängigkeiten"
+        },
+        {
             "name": "Chores",
             "icon": "🔧",
             "prefixes": [
                 "🔧 Chore:",
                 "Chore:",
-                "📦 Deps:",
-                "⬆️ Deps:",
-                "⬇️ Deps:",
                 "🧪 Test:",
                 "🛠️ Tool:",
                 "🗃️ DB:",

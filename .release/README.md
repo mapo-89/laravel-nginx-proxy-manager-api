@@ -16,8 +16,14 @@ whole change; do not call maintenance or refactoring a feature.
 | `⚡ Performance:` | Performance |
 | `⚠️ Deprecated:` | Deprecated |
 | `🔥 Remove:` | Removed |
-| `🔧 Chore:`, `📦 Deps:`, `⬆️ Deps:`, `⬇️ Deps:`, `🧪 Test:` | Chores |
+| `📦 Deps:`, `⬆️ Deps:`, `⬇️ Deps:` | Dependencies |
+| `🔧 Chore:`, `🧪 Test:` | Chores |
 | `🚀 Deploy:` | Deployment |
+
+Dependency updates (packages, container images and runtimes) use **📦 Dependencies**
+or **📦 Abhängigkeiten** for German projects, immediately before Chores/Wartung.
+Explicit Security commits remain in Security. Existing published changelog entries
+are preserved; the category applies to newly generated release notes.
 
 Historical aliases remain readable. Other historical messages are retained under
 Other Changes. Merge subjects and generated version/release commits are excluded.

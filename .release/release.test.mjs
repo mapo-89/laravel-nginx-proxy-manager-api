@@ -23,7 +23,7 @@ test('Core-Panel category order, historical fallback, and automation filtering',
         '⚙️ Chore: set version to 1.1.0', '🚀 Release: minor']) f.commit(subject)
     const notes = releaseNotes('v1.1.0')
     const positions = ['✨ Features', '🐛 Fixes', '♻️ Refactoring', '🎨 UI & Styling', '📝 Documentation', '🔒 Security',
-        '⚡ Performance', '⚠️ Deprecated', '🔥 Removed', '🔧 Chores', '🚀 Deployment', '📌 Other Changes'].map(heading => notes.indexOf('### ' + heading))
+        '⚡ Performance', '⚠️ Deprecated', '🔥 Removed', '📦 Dependencies', '🔧 Chores', '🚀 Deployment', '📌 Other Changes'].map(heading => notes.indexOf('### ' + heading))
     assert.ok(positions.every(position => position >= 0)); assert.deepEqual(positions, [...positions].sort((a, b) => a - b))
     for (const expected of ['- Decode WebP', '- old unclassified change', '- Cover command registration']) assert.ok(notes.includes(expected))
     for (const excluded of ['Initial decoder', 'set version', 'Release: minor']) assert.ok(!notes.includes(excluded))
@@ -148,4 +148,31 @@ test('workflow outputs remain compatible and JSON planning has no output-file si
 test('gate defaults to push semantics and cannot release an ordinary commit', context => {
     const f = fixture(context); const result = f.cli(script, ['gate'], { GITHUB_REF: 'refs/heads/main' })
     assert.equal(result.status, 0, result.stderr); assert.ok(result.stdout.includes('should_release=false'))
+})
+
+test('dependency notes are separate from maintenance in both languages', async () => {
+    const { renderNotes, validSubject } = await import('./release.mjs')
+    const subjects = ['📦 Deps: Refresh PHP image', '⬆️ Deps: Upgrade npm packages',
+        '⬇️ Deps: Restore compatible runtime', '🔧 Chore: Maintain workflows',
+        '🧪 Test: Cover uploads', '🔒 Security: Patch vulnerable dependency']
+    for (const language of ['en', 'de']) {
+        const dependencyHeading = language === 'de' ? '📦 Abhängigkeiten' : '📦 Dependencies'
+        const choreHeading = language === 'de' ? '🔧 Wartung' : '🔧 Chores'
+        const securityHeading = language === 'de' ? '🔒 Sicherheit' : '🔒 Security'
+        const notes = renderNotes('1.1.0', subjects, 'v1.0.0', { language })
+        const section = heading => notes.split('### ' + heading + '\n')[1]?.split('\n### ')[0]
+        const dependencies = section(dependencyHeading)
+        assert.ok(dependencies)
+        for (const message of ['Refresh PHP image', 'Upgrade npm packages', 'Restore compatible runtime']) {
+            assert.ok(dependencies.includes('- ' + message))
+            assert.ok(!section(choreHeading).includes(message))
+        }
+        assert.ok(section(choreHeading).includes('- Maintain workflows'))
+        assert.ok(section(choreHeading).includes('- Cover uploads'))
+        assert.ok(section(securityHeading).includes('- Patch vulnerable dependency'))
+        assert.ok(!dependencies.includes('Patch vulnerable dependency'))
+        assert.ok(notes.indexOf('### ' + dependencyHeading) < notes.indexOf('### ' + choreHeading))
+        assert.ok(!renderNotes('1.1.0', ['🐛 Fix: Correct timeout'], 'v1.0.0', { language }).includes('### ' + dependencyHeading))
+    }
+    for (const subject of subjects) assert.ok(validSubject(subject))
 })
